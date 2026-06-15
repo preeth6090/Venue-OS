@@ -1,6 +1,14 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  LayoutDashboard, CalendarDays, ClipboardList, ArrowLeftRight, Filter,
+  Receipt, TrendingDown, Users, BadgePercent, Globe, Settings, Zap,
+  FileText, BarChart2, Shield, Percent, Link2, SlidersHorizontal,
+  Sun, Moon, Eye, EyeOff, ArrowRight, Loader2, X,
+  Wrench, Bolt, Home, Monitor, Droplets, Leaf, Plus, Pencil,
+  Building2, ChevronRight, Lock,
+} from "lucide-react";
 
 // ─── localStorage hook ──────────────────────────────────────────
 function useLocalStorage<T>(key: string, initial: T): [T, (v: T | ((p: T) => T)) => void] {
@@ -74,15 +82,15 @@ const DEFAULT_VENUE: VenueConfig = {
 
 type StaffCategory = "security"|"housekeeping"|"maintenance"|"electrical"|"caretaker"|"av"|"plumber"|"gardener";
 
-const STAFF_CATEGORIES: { id:StaffCategory; label:string; icon:string; compliance:"STRICT"|"LIGHT" }[] = [
-  { id:"security",    label:"Security",     icon:"🛡️", compliance:"STRICT" },
-  { id:"housekeeping",label:"Housekeeping", icon:"🧹", compliance:"STRICT" },
-  { id:"maintenance", label:"Maintenance",  icon:"🔧", compliance:"LIGHT"  },
-  { id:"electrical",  label:"Electrical",   icon:"⚡", compliance:"LIGHT"  },
-  { id:"caretaker",   label:"Caretaker",    icon:"🏠", compliance:"LIGHT"  },
-  { id:"av",          label:"AV Tech",      icon:"📺", compliance:"LIGHT"  },
-  { id:"plumber",     label:"Plumber",      icon:"🔩", compliance:"LIGHT"  },
-  { id:"gardener",    label:"Gardener",     icon:"🌿", compliance:"LIGHT"  },
+const STAFF_CATEGORIES: { id:StaffCategory; label:string; Icon:React.ElementType; compliance:"STRICT"|"LIGHT" }[] = [
+  { id:"security",    label:"Security",     Icon:Shield,    compliance:"STRICT" },
+  { id:"housekeeping",label:"Housekeeping", Icon:Zap,       compliance:"STRICT" },
+  { id:"maintenance", label:"Maintenance",  Icon:Wrench,    compliance:"LIGHT"  },
+  { id:"electrical",  label:"Electrical",   Icon:Bolt,      compliance:"LIGHT"  },
+  { id:"caretaker",   label:"Caretaker",    Icon:Home,      compliance:"LIGHT"  },
+  { id:"av",          label:"AV Tech",      Icon:Monitor,   compliance:"LIGHT"  },
+  { id:"plumber",     label:"Plumber",      Icon:Droplets,  compliance:"LIGHT"  },
+  { id:"gardener",    label:"Gardener",     Icon:Leaf,      compliance:"LIGHT"  },
 ];
 
 const SHIFTS   = ["Morning (6am–2pm)","Afternoon (2pm–10pm)","Night (10pm–6am)","Full Day (8am–6pm)","Flexible / On-call"];
@@ -137,14 +145,14 @@ const AIRBNB_BOOKINGS = [
 ];
 
 const EXP_CATS = [
-  {name:"Electricity & Utilities",icon:"⚡",amount:45000, color:"#f59e0b"},
-  {name:"Property Rent",          icon:"🏢",amount:120000,color:"#3b82f6"},
-  {name:"Security Staff",         icon:"🛡️",amount:38000, color:"#ef4444"},
-  {name:"Housekeeping & Cleaning",icon:"🧹",amount:25000, color:"#10b981"},
-  {name:"Catering Setup",         icon:"🍽️",amount:15000, color:"#a855f7"},
-  {name:"AV & Technology",        icon:"📺",amount:12000, color:"#06b6d4"},
-  {name:"Maintenance & Repairs",  icon:"🔧",amount:8000,  color:"#f97316"},
-  {name:"Miscellaneous",          icon:"📦",amount:10000, color:"#64748b"},
+  {name:"Electricity & Utilities",color:"#f59e0b",amount:45000 },
+  {name:"Property Rent",          color:"#3b82f6",amount:120000},
+  {name:"Security Staff",         color:"#ef4444",amount:38000 },
+  {name:"Housekeeping & Cleaning",color:"#10b981",amount:25000 },
+  {name:"Catering Setup",         color:"#a855f7",amount:15000 },
+  {name:"AV & Technology",        color:"#06b6d4",amount:12000 },
+  {name:"Maintenance & Repairs",  color:"#f97316",amount:8000  },
+  {name:"Miscellaneous",          color:"#64748b",amount:10000 },
 ];
 const EXP_MONTHLY = [
   {month:"Jan",electricity:42000,rent:120000,security:36000,housekeeping:23000,catering:12000,av:9000, maintenance:6000, misc:8000 },
@@ -209,7 +217,7 @@ function Modal({title,onClose,children,wide=false}:{title:string;onClose:()=>voi
       <div className={`v-card ${wide?"w-full max-w-4xl":"w-full max-w-xl"} max-h-[92vh] overflow-y-auto`} onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 sticky top-0 z-10 v-card rounded-t-xl" style={{borderBottom:"1px solid var(--border)"}}>
           <h2 className="font-bold text-lg v-text">{title}</h2>
-          <button onClick={onClose} className="v-muted hover:v-text text-xl transition-colors leading-none" style={{color:"var(--muted)"}}>✕</button>
+          <button onClick={onClose} className="transition-colors rounded-md p-1 hover:bg-black/10" style={{color:"var(--muted)"}}><X size={18} strokeWidth={2}/></button>
         </div>
         <div className="p-6">{children}</div>
       </div>
@@ -296,7 +304,7 @@ function StaffModal({initial,onClose,onSave}:{initial?:Staff;onClose:()=>void;on
             <FL label="Photo URL (optional)"><VI value={f.photo} onChange={v=>{upd("photo",v);setImgErr(false);}} placeholder="https://...jpg"/></FL>
             <FL label="Staff Category">
               <select value={f.category} onChange={e=>upd("category",e.target.value as StaffCategory)} className="v-input">
-                {STAFF_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+                {STAFF_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
             </FL>
             <FL label="Role / Designation"><VI value={f.role} onChange={v=>upd("role",v)} placeholder="e.g. Security Guard"/></FL>
@@ -783,7 +791,7 @@ function Dashboard(){
             {cats.slice(0,5).map((c:any)=>(
               <div key={c.name}>
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs" style={{color:"var(--muted)"}}>{c.icon} {c.name.split(" ")[0]}</span>
+                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:c.color}}/><span className="text-xs" style={{color:"var(--muted)"}}>{c.name.split(" ")[0]}</span></div>
                   <span className="text-[10px] font-semibold" style={{color:"var(--text)"}}>₹{(c.amount/1000).toFixed(0)}K</span>
                 </div>
                 <div className="h-1 rounded-full overflow-hidden" style={{background:"var(--s2)"}}>
@@ -1531,7 +1539,7 @@ function ExpensesView(){
           <div className="space-y-3">
             {cats.map((c,i)=>{const v=(mData as any)[EXP_KEYS[i]] as number??c.amount;return(
               <div key={c.name} className="flex items-center gap-3">
-                <span className="text-lg w-6">{c.icon}</span>
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:c.color}}/>
                 <div className="flex-1">
                   <div className="flex justify-between text-xs mb-1"><span style={{color:"var(--text)"}}>{c.name}</span><span className="font-semibold" style={{color:c.color}}>{fmt(v)}</span></div>
                   <div className="h-2.5 rounded-full overflow-hidden" style={{background:"var(--s2)"}}><div className="h-full rounded-full" style={{width:`${(v/maxCat)*100}%`,background:c.color}}/></div>
@@ -1603,11 +1611,11 @@ function StaffView(){
         {STAFF_CATEGORIES.map(c=>(
           <button key={c.id} onClick={()=>setTab(c.id)} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
             style={tab===c.id?{background:"#f59e0b",color:"#000"}:{background:"var(--s1)",border:"1px solid var(--border)",color:"var(--muted)"}}>
-            {c.icon} {c.label}
+            <c.Icon size={12} strokeWidth={2}/> {c.label}
             <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{background:"rgba(0,0,0,0.15)"}}>{staffList.filter(s=>s.category===c.id).length}</span>
           </button>
         ))}
-        <button onClick={()=>setAddModal(true)} className="ml-auto px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors">➕ Add Staff</button>
+        <button onClick={()=>setAddModal(true)} className="ml-auto px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5"><Plus size={14}/> Add Staff</button>
       </div>
 
       {/* Stats */}
@@ -1620,9 +1628,9 @@ function StaffView(){
       {/* Staff cards */}
       {filtered.length===0?(
         <Card className="p-12 text-center">
-          <p className="text-4xl mb-2">{cat.icon}</p>
+          <div className="flex justify-center mb-3"><div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{background:"var(--s2)",border:"1px solid var(--border)"}}><cat.Icon size={22} strokeWidth={1.5} color="#f59e0b"/></div></div>
           <p className="font-semibold" style={{color:"var(--text)"}}>No {cat.label} staff added yet</p>
-          <button onClick={()=>setAddModal(true)} className="mt-4 px-4 py-2 bg-amber-500 text-black font-semibold rounded-lg text-sm">➕ Add {cat.label} Staff</button>
+          <button onClick={()=>setAddModal(true)} className="mt-4 px-4 py-2 bg-amber-500 text-black font-semibold rounded-lg text-sm flex items-center gap-1.5 mx-auto"><Plus size={14}/> Add {cat.label} Staff</button>
         </Card>
       ):(
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1633,7 +1641,7 @@ function StaffView(){
                   <StaffAvatar staff={s} size={10}/>
                   <div><p className="font-semibold text-sm" style={{color:"var(--text)"}}>{s.name}</p><p className="text-xs" style={{color:"var(--muted)"}}>{s.role}</p></div>
                 </div>
-                <button onClick={()=>setEditStaff(s)} className="text-xs px-2 py-1 rounded transition-colors" style={{background:"var(--s2)",border:"1px solid var(--border)",color:"var(--muted)"}}>✏️ Edit</button>
+                <button onClick={()=>setEditStaff(s)} className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors" style={{background:"var(--s2)",border:"1px solid var(--border)",color:"var(--muted)"}}><Pencil size={11}/> Edit</button>
               </div>
               <Badge status={s.bgv}/>
               <div className="mt-3 space-y-1.5 text-xs">
@@ -2145,16 +2153,16 @@ const DEMO_USERS = [
 ];
 
 const FEATURES = [
-  { icon:"⚡", title:"Executive Dashboard",    desc:"Real-time KPIs, revenue charts, pipeline funnel across all properties" },
-  { icon:"📅", title:"Booking Calendar",       desc:"Visual month calendar with availability, Airbnb sync, and booking request links" },
-  { icon:"🎯", title:"Lead & CRM Pipeline",   desc:"Kanban pipeline from enquiry to conversion with full activity history" },
-  { icon:"🧾", title:"GST-Compliant Invoices",desc:"Tax invoices with CGST/SGST auto-calc, SAC codes, PDF export — Karnataka ready" },
-  { icon:"💸", title:"Expense Monitor",       desc:"Category-wise monthly expense breakdown with 6-month trend analysis" },
-  { icon:"👷", title:"Staff & Compliance",    desc:"8 staff categories, BGV tracking, photo profiles, add/edit with mobile" },
-  { icon:"💰", title:"BDE Incentive Engine",  desc:"Slab-based commission calculator with editable targets and sliders" },
-  { icon:"✈️", title:"Airbnb / iCal Sync",    desc:"Two-way sync with external calendars, auto-blocking internal slots" },
-  { icon:"🌐", title:"Public Booking Portal", desc:"Shareable venue website with gallery, facilities, and OTP booking request" },
-  { icon:"⚙️", title:"Venue Configuration",  desc:"Full venue profile — photos, video, spaces, facilities, social links" },
+  { Icon:LayoutDashboard,   title:"Executive Dashboard",    desc:"Real-time KPIs, revenue charts, pipeline across all properties" },
+  { Icon:CalendarDays,      title:"Booking Calendar",       desc:"Visual availability, Airbnb sync, and shareable booking links" },
+  { Icon:Filter,            title:"Lead & CRM Pipeline",   desc:"Pipeline from enquiry to conversion with full activity history" },
+  { Icon:FileText,          title:"GST-Compliant Invoices",desc:"Tax invoices with CGST/SGST auto-calc, SAC codes, PDF export" },
+  { Icon:BarChart2,         title:"Expense Monitor",       desc:"Category-wise monthly breakdown with 6-month trend analysis" },
+  { Icon:Shield,            title:"Staff & Compliance",    desc:"8 departments, BGV tracking, photo profiles, compliance docs" },
+  { Icon:BadgePercent,      title:"BDE Incentive Engine",  desc:"Slab-based commission calculator with editable targets" },
+  { Icon:Link2,             title:"Airbnb / iCal Sync",    desc:"Two-way sync with external calendars, auto-blocking slots" },
+  { Icon:Globe,             title:"Public Booking Portal", desc:"Shareable venue site with gallery, spaces and booking form" },
+  { Icon:SlidersHorizontal, title:"Venue Configuration",  desc:"Full profile — photos, spaces, facilities, social links" },
 ];
 
 function LoginPage({theme,toggleTheme,onLoginSuccess}:{theme:string;toggleTheme:()=>void;onLoginSuccess:()=>void}){
@@ -2170,7 +2178,7 @@ function LoginPage({theme,toggleTheme,onLoginSuccess}:{theme:string;toggleTheme:
     try{
       const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.trim().toLowerCase(),password})});
       if(res.ok){ onLoginSuccess(); }
-      else{ setErr("Invalid email or password. Use the demo credentials below."); }
+      else{ setErr("Invalid email or password."); }
     }catch(e){ setErr("Network error. Please try again."); }
     setLoading(false);
   };
@@ -2179,48 +2187,53 @@ function LoginPage({theme,toggleTheme,onLoginSuccess}:{theme:string;toggleTheme:
 
   return(
     <div data-theme={theme} className="min-h-screen flex" style={{background:"var(--bg)"}}>
-      {/* ── Left panel: branding + features ── */}
-      <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden" style={{background:"linear-gradient(160deg,#0a0a0f 0%,#13131a 60%,#1c1c26 100%)"}}>
-        {/* Decorative gold blobs */}
-        <div className="absolute top-[-80px] left-[-80px] w-80 h-80 rounded-full opacity-10" style={{background:"radial-gradient(circle,#f59e0b,transparent)"}}/>
-        <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 rounded-full opacity-10" style={{background:"radial-gradient(circle,#f97316,transparent)"}}/>
 
-        <div className="relative z-10 p-10 flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-black" style={{background:"#f59e0b"}}>V</div>
-            <div>
-              <div className="font-black text-xl leading-none" style={{color:"#ffffff"}}>VenueOS</div>
-              <div className="text-xs mt-0.5" style={{color:"#64748b"}}>Enterprise Venue Operations</div>
-            </div>
+      {/* ── Left panel: branding ── */}
+      <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden" style={{background:"#09090e"}}>
+        {/* Subtle dot grid */}
+        <div className="absolute inset-0" style={{backgroundImage:"radial-gradient(circle,rgba(255,255,255,0.06) 1px,transparent 1px)",backgroundSize:"28px 28px"}}/>
+        {/* Amber glow top-left */}
+        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full pointer-events-none" style={{background:"radial-gradient(circle,rgba(245,158,11,0.08),transparent 65%)"}}/>
+        {/* Orange glow bottom-right */}
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full pointer-events-none" style={{background:"radial-gradient(circle,rgba(249,115,22,0.06),transparent 65%)"}}/>
+
+        <div className="relative z-10 flex flex-col h-full px-14 py-12">
+          {/* Wordmark */}
+          <div className="flex items-center gap-3 mb-14">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-black" style={{background:"#f59e0b"}}>V</div>
+            <span className="font-black text-[17px] tracking-tight" style={{color:"#f8fafc"}}>VenueOS</span>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{background:"rgba(245,158,11,0.12)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.2)"}}>Enterprise</span>
           </div>
 
-          <h2 className="text-3xl font-black leading-tight mb-2" style={{color:"#ffffff"}}>
-            Everything you need to<br/>run a world-class venue.
-          </h2>
-          <p className="mb-8" style={{color:"#64748b",fontSize:"15px"}}>
-            Multi-property operations, GST-compliant billing, staff compliance, and automated client workflows — all in one platform.
+          {/* Headline */}
+          <h1 className="text-[2.4rem] font-black leading-[1.12] tracking-tight mb-5" style={{color:"#f8fafc"}}>
+            The operating system<br/>for venue professionals.
+          </h1>
+          <p className="text-[15px] leading-relaxed mb-12" style={{color:"#64748b"}}>
+            Multi-property operations, GST-compliant billing, staff compliance, and automated client workflows — unified in one platform.
           </p>
 
-          {/* Feature list */}
-          <div className="grid grid-cols-2 gap-3 flex-1 content-start">
+          {/* Feature list — two columns */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 flex-1 content-start">
             {FEATURES.map(f=>(
-              <div key={f.title} className="flex items-start gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)"}}>
-                <span className="text-xl flex-shrink-0 mt-0.5">{f.icon}</span>
+              <div key={f.title} className="flex items-start gap-3">
+                <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.15)"}}>
+                  <f.Icon size={12} strokeWidth={2} color="#f59e0b"/>
+                </div>
                 <div>
-                  <p className="font-semibold text-xs leading-tight" style={{color:"#ffffff"}}>{f.title}</p>
-                  <p className="text-[11px] mt-0.5 leading-snug" style={{color:"#64748b"}}>{f.desc}</p>
+                  <p className="text-[13px] font-semibold leading-tight" style={{color:"#e2e8f0"}}>{f.title}</p>
+                  <p className="text-[11px] mt-0.5 leading-snug" style={{color:"#475569"}}>{f.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Stats strip */}
-          <div className="flex gap-6 mt-8 pt-6" style={{borderTop:"1px solid rgba(255,255,255,0.08)"}}>
-            {[["10+","Modules"],["GST","Compliant"],["iCal","Synced"],["OTP","Verified"]].map(([v,l])=>(
+          <div className="flex gap-8 mt-12 pt-8" style={{borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+            {[["10+","Modules"],["GST","Compliant"],["iCal","Integrated"],["RBAC","Access Control"]].map(([v,l])=>(
               <div key={l}>
-                <p className="font-black text-lg" style={{color:"#f59e0b"}}>{v}</p>
-                <p className="text-xs" style={{color:"#64748b"}}>{l}</p>
+                <p className="text-base font-black" style={{color:"#f59e0b"}}>{v}</p>
+                <p className="text-[10px] mt-0.5 font-medium" style={{color:"#475569"}}>{l}</p>
               </div>
             ))}
           </div>
@@ -2228,72 +2241,92 @@ function LoginPage({theme,toggleTheme,onLoginSuccess}:{theme:string;toggleTheme:
       </div>
 
       {/* ── Right panel: login form ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10" style={{background:"var(--bg)"}}>
-        {/* Theme toggle top-right */}
-        <div className="absolute top-4 right-4">
-          <button onClick={toggleTheme} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"var(--s1)",border:"1px solid var(--border)",color:"var(--text)"}}>
-            {theme==="dark"?"☀️ Light":"🌙 Dark"}
-          </button>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 relative" style={{background:"var(--bg)"}}>
+        {/* Theme toggle */}
+        <button onClick={toggleTheme} className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          style={{background:"var(--s1)",border:"1px solid var(--border)",color:"var(--muted)"}}>
+          {theme==="dark"
+            ?<><Sun size={12} strokeWidth={2}/> Light</>
+            :<><Moon size={12} strokeWidth={2}/> Dark</>
+          }
+        </button>
 
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-[360px]">
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-black" style={{background:"#f59e0b"}}>V</div>
-            <div className="font-black text-xl leading-none" style={{color:"var(--text)"}}>VenueOS</div>
+          <div className="flex items-center gap-3 mb-10 lg:hidden">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-black" style={{background:"#f59e0b"}}>V</div>
+            <span className="font-black text-lg" style={{color:"var(--text)"}}>VenueOS</span>
           </div>
 
-          <h1 className="text-2xl font-black mb-1" style={{color:"var(--text)"}}>Welcome back</h1>
-          <p className="text-sm mb-7" style={{color:"var(--muted)"}}>Sign in to your Grand Palace Venues account</p>
+          <h1 className="text-[1.7rem] font-black tracking-tight mb-1" style={{color:"var(--text)"}}>Welcome back</h1>
+          <p className="text-sm mb-8" style={{color:"var(--muted)"}}>Sign in to Grand Palace Venues</p>
 
+          {/* Form */}
           <div className="space-y-4">
-            <FL label="Email Address">
-              <VI value={email} onChange={setEmail} placeholder="admin@grandpalace.in"/>
-            </FL>
-            <FL label="Password">
+            <div>
+              <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{color:"var(--muted)"}}>Email address</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} type="email"
+                placeholder="you@grandpalace.in" className="v-input"
+                onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{color:"var(--muted)"}}>Password</label>
               <div className="relative">
-                <input value={password} onChange={e=>setPassword(e.target.value)} type={showPw?"text":"password"} placeholder="Enter password" className="v-input pr-10"
-                  onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
-                <button onClick={()=>setShowPw(p=>!p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{color:"var(--subtle)"}}>
-                  {showPw?"🙈":"👁"}
+                <input value={password} onChange={e=>setPassword(e.target.value)}
+                  type={showPw?"text":"password"} placeholder="Enter password"
+                  className="v-input pr-14" onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
+                <button onClick={()=>setShowPw(p=>!p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-medium transition-colors"
+                  style={{color:"var(--subtle)"}}>
+                  {showPw?<><EyeOff size={13}/> Hide</>:<><Eye size={13}/> Show</>}
                 </button>
               </div>
-            </FL>
+            </div>
           </div>
 
-          {err&&<p className="mt-3 text-xs text-red-400 text-center">{err}</p>}
+          {err&&<p className="mt-3 text-xs text-red-400">{err}</p>}
 
           <button onClick={tryLogin} disabled={!email||!password||loading}
-            className="w-full mt-5 py-3 font-bold rounded-xl text-black text-sm transition-all disabled:opacity-50"
-            style={{background:loading?"#d97706":"#f59e0b"}}>
-            {loading?"Signing in...":"Sign In →"}
+            className="w-full mt-5 py-3 font-bold rounded-xl text-black text-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+            style={{background:"#f59e0b"}}>
+            {loading
+              ?<><Loader2 size={14} className="animate-spin"/>Signing in...</>
+              :<>Sign in <ArrowRight size={14}/></>
+            }
           </button>
 
-          {/* Demo credentials */}
-          <div className="mt-6 rounded-xl overflow-hidden" style={{border:"1px solid var(--border)"}}>
-            <div className="px-4 py-2.5 text-xs font-semibold" style={{background:"var(--s2)",borderBottom:"1px solid var(--border)",color:"var(--muted)"}}>
-              🔑 Demo Credentials — click to auto-fill
+          {/* Demo accounts */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px" style={{background:"var(--border)"}}/>
+              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{color:"var(--subtle)"}}>Demo accounts</span>
+              <div className="flex-1 h-px" style={{background:"var(--border)"}}/>
             </div>
-            {DEMO_USERS.map(u=>(
-              <button key={u.email} onClick={()=>quickLogin(u)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-amber-500/5"
-                style={{borderBottom:"1px solid var(--border)"}}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-black flex-shrink-0"
-                  style={{background:`linear-gradient(135deg,#f59e0b,#f97316)`}}>
-                  {u.name.split(" ").map(x=>x[0]).join("")}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{u.name}</p>
-                  <p className="text-[11px] truncate" style={{color:"var(--subtle)"}}>{u.email} · {u.password}</p>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0" style={{background:"rgba(245,158,11,0.15)",color:"#f59e0b"}}>
-                  {u.role.replace("_"," ")}
-                </span>
-              </button>
-            ))}
+            <div className="space-y-1.5">
+              {DEMO_USERS.map(u=>(
+                <button key={u.email} onClick={()=>quickLogin(u)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
+                  style={{background:"var(--s1)",border:"1px solid var(--border)"}}>
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-black text-black flex-shrink-0"
+                    style={{background:"#f59e0b"}}>
+                    {u.name.split(" ").map((x:string)=>x[0]).join("")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{u.name}</p>
+                    <p className="text-[10px] truncate" style={{color:"var(--subtle)"}}>{u.email}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{background:"rgba(245,158,11,0.12)",color:"#f59e0b"}}>
+                      {u.role.replace(/_/g," ")}
+                    </span>
+                    <ChevronRight size={12} color="#475569"/>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <p className="text-center text-xs mt-6" style={{color:"var(--subtle)"}}>VenueOS v3.0 · Grand Palace Venues Pvt. Ltd.</p>
+          <p className="text-center text-[11px] mt-6" style={{color:"var(--subtle)"}}>VenueOS v3.0 · Grand Palace Venues Pvt. Ltd.</p>
         </div>
       </div>
     </div>
@@ -2305,17 +2338,17 @@ function LoginPage({theme,toggleTheme,onLoginSuccess}:{theme:string;toggleTheme:
 // ═══════════════════════════════════════════════════════════════
 
 const NAV=[
-  {icon:"⚡",label:"Dashboard",       id:"dashboard"},
-  {icon:"📅",label:"Calendar",        id:"calendar"},
-  {icon:"📋",label:"Bookings",        id:"bookings"},
-  {icon:"✈️",label:"Airbnb/Ext.",     id:"external"},
-  {icon:"🎯",label:"Leads & CRM",     id:"leads"},
-  {icon:"🧾",label:"Invoices",        id:"invoices"},
-  {icon:"💸",label:"Expenses",        id:"expenses"},
-  {icon:"👷",label:"Staff",           id:"staff"},
-  {icon:"💰",label:"BDE",             id:"bde"},
-  {icon:"🌐",label:"Public Portal",   id:"portal"},
-  {icon:"⚙️",label:"Venue Settings",  id:"settings"},
+  {Icon:LayoutDashboard, label:"Dashboard",       id:"dashboard"},
+  {Icon:CalendarDays,    label:"Calendar",        id:"calendar"},
+  {Icon:ClipboardList,   label:"Bookings",        id:"bookings"},
+  {Icon:ArrowLeftRight,  label:"Airbnb / iCal",   id:"external"},
+  {Icon:Filter,          label:"Leads & CRM",     id:"leads"},
+  {Icon:Receipt,         label:"Invoices",        id:"invoices"},
+  {Icon:TrendingDown,    label:"Expenses",        id:"expenses"},
+  {Icon:Users,           label:"Staff",           id:"staff"},
+  {Icon:BadgePercent,    label:"BDE",             id:"bde"},
+  {Icon:Globe,           label:"Public Portal",   id:"portal"},
+  {Icon:Settings,        label:"Venue Settings",  id:"settings"},
 ];
 
 export default function App(){
@@ -2332,7 +2365,7 @@ export default function App(){
   const logout=async()=>{await fetch("/api/logout",{method:"POST"});qcRoot.setQueryData(["me"],null);setActive("dashboard");};
 
   if(meLoading){
-    return <div className="min-h-screen flex items-center justify-center" style={{background:"#0a0a0f"}}><div className="text-amber-500 text-2xl animate-pulse">⚡ VenueOS</div></div>;
+    return <div className="min-h-screen flex items-center justify-center" style={{background:"#09090e"}}><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center font-black text-black text-sm">V</div><span className="font-black text-xl" style={{color:"#f8fafc"}}>VenueOS</span><Loader2 size={16} className="animate-spin ml-1" color="#f59e0b"/></div></div>;
   }
 
   if(!me){
@@ -2393,9 +2426,9 @@ export default function App(){
         {/* Nav */}
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
           {filteredNav.map(n=>(
-            <button key={n.id} onClick={()=>{setActive(n.id);setSidebarOpen(false);}} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all"
+            <button key={n.id} onClick={()=>{setActive(n.id);setSidebarOpen(false);}} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all"
               style={{background:active===n.id?"rgba(245,158,11,0.12)":"transparent",color:active===n.id?"#f59e0b":"var(--muted)",fontWeight:active===n.id?500:400,fontSize:"13px"}}>
-              <span className="text-base leading-none">{n.icon}</span>
+              <n.Icon size={15} strokeWidth={active===n.id?2:1.75}/>
               <span className="truncate">{n.label}</span>
               {active===n.id&&<div className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"#f59e0b"}}/>}
             </button>
