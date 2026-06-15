@@ -8,6 +8,7 @@ import {
   Sun, Moon, Eye, EyeOff, ArrowRight, Loader2, X,
   Wrench, Bolt, Home, Monitor, Droplets, Leaf, Plus, Pencil,
   Building2, ChevronRight, Lock, IndianRupee, CalendarCheck, AlertCircle, Activity,
+  CheckSquare, Sparkles, Trash2, Clock, ChevronDown, ChevronUp, Check,
 } from "lucide-react";
 
 // ─── localStorage hook ──────────────────────────────────────────
@@ -1809,6 +1810,342 @@ function StaffView(){
   );
 }
 
+// ─── Tasks ──────────────────────────────────────────────────────
+const PRIORITY_CFG:{[k:string]:{color:string;bg:string;label:string}}={
+  HIGH:   {color:"#ef4444",bg:"rgba(239,68,68,0.1)",   label:"High"},
+  MEDIUM: {color:"#f59e0b",bg:"rgba(245,158,11,0.1)",  label:"Medium"},
+  NORMAL: {color:"#10b981",bg:"rgba(16,185,129,0.1)",  label:"Normal"},
+};
+const STATUS_CYCLE:{[k:string]:string}={PENDING:"ONGOING",ONGOING:"COMPLETED",COMPLETED:"PENDING"};
+const STATUS_CFG:{[k:string]:{color:string;label:string}}={
+  PENDING:   {color:"#64748b",label:"Pending"},
+  ONGOING:   {color:"#6366f1",label:"Ongoing"},
+  COMPLETED: {color:"#10b981",label:"Completed"},
+};
+const CAT_CFG:{[k:string]:{color:string;label:string}}={
+  FOLLOW_UP:  {color:"#a855f7",label:"Follow-up"},
+  FINANCE:    {color:"#3b82f6",label:"Finance"},
+  OPERATIONS: {color:"#f97316",label:"Operations"},
+  ADMIN:      {color:"#64748b",label:"Admin"},
+  GENERAL:    {color:"#94a3b8",label:"General"},
+};
+
+function AddTaskModal({onClose,onSave,prefill}:{onClose:()=>void;onSave:(t:any)=>void;prefill?:any}){
+  const [title,setTitle]=useState(prefill?.title??"");
+  const [desc,setDesc]=useState(prefill?.description??"");
+  const [assignedTo,setAssignedTo]=useState(prefill?.assignedTo??"");
+  const [priority,setPriority]=useState(prefill?.priority??"NORMAL");
+  const [status,setStatus]=useState("PENDING");
+  const [category,setCategory]=useState(prefill?.category??"GENERAL");
+  const [deadline,setDeadline]=useState(prefill?.deadline??"");
+  const [relatedRef,setRelatedRef]=useState(prefill?.relatedRef??"");
+  const [notes,setNotes]=useState("");
+  return(
+    <Modal title={prefill?"Review AI Task":"Add Task"} onClose={onClose}>
+      <div className="space-y-3">
+        <FL label="Title *"><VI value={title} onChange={setTitle} placeholder="e.g. Call Priya Kapoor for wedding enquiry"/></FL>
+        <FL label="Description"><textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={2} className="v-input resize-none" placeholder="Details about what needs to be done..."/></FL>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FL label="Assigned To"><VI value={assignedTo} onChange={setAssignedTo} placeholder="Staff name or email"/></FL>
+          <FL label="Deadline"><input type="date" value={deadline} onChange={e=>setDeadline(e.target.value)} className="v-input"/></FL>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FL label="Category">
+            <select value={category} onChange={e=>setCategory(e.target.value)} className="v-input">
+              {Object.entries(CAT_CFG).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </FL>
+          <FL label="Priority">
+            <div className="flex gap-2">
+              {Object.entries(PRIORITY_CFG).map(([k,v])=>(
+                <button key={k} onClick={()=>setPriority(k)}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{background:priority===k?v.color:v.bg,color:priority===k?"white":v.color,border:`1px solid ${priority===k?v.color:v.color+"44"}`}}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </FL>
+        </div>
+        <FL label="Related To (booking ref / lead name)"><VI value={relatedRef} onChange={setRelatedRef} placeholder="e.g. BK-2425-0042 or Rahul Sharma"/></FL>
+        <FL label="Notes"><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} className="v-input resize-none" placeholder="Optional notes..."/></FL>
+        <button onClick={()=>onSave({title,description:desc,assignedTo,priority,status,category,deadline:deadline||null,relatedRef:relatedRef||null,notes:notes||null,source:prefill?.source??"MANUAL"})}
+          disabled={!title.trim()}
+          className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40"
+          style={{background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"black"}}>
+          Save Task
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function AIGeneratePanel({onClose,onAccept}:{onClose:()=>void;onAccept:(tasks:any[])=>void}){
+  const [loading,setLoading]=useState(true);
+  const [tasks,setTasks]=useState<any[]>([]);
+  const [error,setError]=useState("");
+  const [selected,setSelected]=useState<Set<number>>(new Set());
+  const [reviewing,setReviewing]=useState<number|null>(null);
+
+  useEffect(()=>{
+    fetch("/api/tasks/generate",{method:"POST"})
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.error){setError(d.error);}
+        else{setTasks(d.tasks||[]);setSelected(new Set(d.tasks?.map((_:any,i:number)=>i)||[]));}
+      })
+      .catch(()=>setError("Network error — please try again"))
+      .finally(()=>setLoading(false));
+  },[]);
+
+  const toggle=(i:number)=>setSelected(prev=>{const n=new Set(prev);n.has(i)?n.delete(i):n.add(i);return n;});
+
+  return(
+    <Modal title="AI Generated Tasks" onClose={onClose}>
+      {loading&&(
+        <div className="flex flex-col items-center py-10 gap-3">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{background:"rgba(245,158,11,0.1)"}}>
+            <Sparkles size={22} color="#f59e0b" className="animate-pulse"/>
+          </div>
+          <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Analyzing your business data...</p>
+          <p className="text-xs" style={{color:"var(--muted)"}}>Reviewing leads, bookings & invoices with Llama 3</p>
+        </div>
+      )}
+      {error&&(
+        <div className="rounded-xl p-4 text-sm" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",color:"#ef4444"}}>
+          {error}
+        </div>
+      )}
+      {!loading&&!error&&tasks.length>0&&(
+        <div className="space-y-3">
+          <p className="text-xs" style={{color:"var(--muted)"}}>{selected.size} of {tasks.length} tasks selected — click to toggle</p>
+          {tasks.map((t,i)=>{
+            const p=PRIORITY_CFG[t.priority]||PRIORITY_CFG.NORMAL;
+            const c=CAT_CFG[t.category]||CAT_CFG.GENERAL;
+            const sel=selected.has(i);
+            return(
+              <div key={i} onClick={()=>toggle(i)} className="rounded-xl p-3 cursor-pointer transition-all"
+                style={{background:sel?"var(--s2)":"var(--s1)",border:`1.5px solid ${sel?"var(--border)":"transparent"}`,opacity:sel?1:0.5}}>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={{background:sel?"#f59e0b":"var(--border)"}}>
+                      {sel&&<Check size={10} color="black" strokeWidth={3}/>}
+                    </div>
+                    <p className="text-xs font-semibold" style={{color:"var(--text)"}}>{t.title}</p>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0" style={{background:p.bg,color:p.color}}>{p.label}</span>
+                </div>
+                {t.description&&<p className="text-[11px] ml-6" style={{color:"var(--muted)"}}>{t.description}</p>}
+                <div className="flex items-center gap-2 mt-1.5 ml-6">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{background:c.color+"22",color:c.color}}>{c.label}</span>
+                  {t.deadline&&<span className="text-[10px]" style={{color:"var(--muted)"}}>{t.deadline}</span>}
+                  {t.relatedRef&&<span className="text-[10px] font-medium" style={{color:"#f59e0b"}}>{t.relatedRef}</span>}
+                </div>
+              </div>
+            );
+          })}
+          <button onClick={()=>onAccept(tasks.filter((_,i)=>selected.has(i)))}
+            disabled={selected.size===0}
+            className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40"
+            style={{background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"black"}}>
+            Add {selected.size} Task{selected.size!==1?"s":""} to Board
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function TasksView(){
+  const qc=useQueryClient();
+  const {data:tasks=[],isLoading}=useQuery({queryKey:["tasks"],queryFn:()=>fetch("/api/tasks").then(r=>r.json())});
+  const [addModal,setAddModal]=useState(false);
+  const [aiPanel,setAiPanel]=useState(false);
+  const [filterStatus,setFilterStatus]=useState<string|null>(null);
+  const [filterPriority,setFilterPriority]=useState<string|null>(null);
+  const [expandedId,setExpandedId]=useState<string|null>(null);
+
+  const saveTask=async(data:any)=>{
+    await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+    qc.invalidateQueries({queryKey:["tasks"]});
+  };
+  const updateTask=async(id:string,data:any)=>{
+    await fetch("/api/tasks",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,...data})});
+    qc.invalidateQueries({queryKey:["tasks"]});
+  };
+  const deleteTask=async(id:string)=>{
+    await fetch(`/api/tasks?id=${id}`,{method:"DELETE"});
+    qc.invalidateQueries({queryKey:["tasks"]});
+  };
+  const cycleStatus=async(task:any)=>{
+    await updateTask(task.id,{status:STATUS_CYCLE[task.status]||"PENDING"});
+  };
+  const acceptAiTasks=async(aiTasks:any[])=>{
+    for(const t of aiTasks)await saveTask({...t,source:"AI"});
+    setAiPanel(false);
+  };
+
+  const list=tasks as any[];
+  const filtered=list.filter((t:any)=>{
+    if(filterStatus&&t.status!==filterStatus)return false;
+    if(filterPriority&&t.priority!==filterPriority)return false;
+    return true;
+  });
+
+  const counts={
+    total:list.length,
+    pending:list.filter((t:any)=>t.status==="PENDING").length,
+    ongoing:list.filter((t:any)=>t.status==="ONGOING").length,
+    completed:list.filter((t:any)=>t.status==="COMPLETED").length,
+    high:list.filter((t:any)=>t.priority==="HIGH"&&t.status!=="COMPLETED").length,
+    overdue:list.filter((t:any)=>t.isOverdue).length,
+  };
+
+  const now=new Date();
+
+  return(
+    <Section title="Tasks" sub={`${counts.total} tasks · ${counts.overdue} overdue`}>
+      {addModal&&<AddTaskModal onClose={()=>setAddModal(false)} onSave={t=>{saveTask(t);setAddModal(false);}}/>}
+      {aiPanel&&<AIGeneratePanel onClose={()=>setAiPanel(false)} onAccept={acceptAiTasks}/>}
+
+      {/* Stats strip */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {[
+          {label:"Total",    value:counts.total,     color:"var(--text)"},
+          {label:"Pending",  value:counts.pending,   color:"#64748b"},
+          {label:"Ongoing",  value:counts.ongoing,   color:"#6366f1"},
+          {label:"Done",     value:counts.completed, color:"#10b981"},
+          {label:"High",     value:counts.high,      color:"#ef4444"},
+          {label:"Overdue",  value:counts.overdue,   color:"#ef4444"},
+        ].map(s=>(
+          <div key={s.label} className="v-card rounded-xl p-3 text-center">
+            <p className="text-xl font-black" style={{color:s.color}}>{s.value}</p>
+            <p className="text-[10px] mt-0.5" style={{color:"var(--muted)"}}>{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Action bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={()=>setAiPanel(true)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+          style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"white"}}>
+          <Sparkles size={13}/> Generate with AI
+        </button>
+        <button onClick={()=>setAddModal(true)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+          style={{background:"var(--s2)",color:"var(--text)",border:"1px solid var(--border)"}}>
+          <Plus size={13}/> Add Task
+        </button>
+        <div className="flex-1"/>
+        {/* Status filter */}
+        <div className="flex gap-1">
+          {[null,"PENDING","ONGOING","COMPLETED"].map(s=>(
+            <button key={s??"all"} onClick={()=>setFilterStatus(s)}
+              className="px-2.5 py-1 rounded-lg text-xs transition-all"
+              style={{background:filterStatus===s?"#f59e0b22":"var(--s2)",color:filterStatus===s?"#f59e0b":"var(--muted)",fontWeight:filterStatus===s?700:400,border:`1px solid ${filterStatus===s?"#f59e0b44":"var(--border)"}`}}>
+              {s?STATUS_CFG[s].label:"All"}
+            </button>
+          ))}
+        </div>
+        {/* Priority filter */}
+        <div className="flex gap-1">
+          {[null,"HIGH","MEDIUM","NORMAL"].map(p=>(
+            <button key={p??"all"} onClick={()=>setFilterPriority(p)}
+              className="px-2.5 py-1 rounded-lg text-xs transition-all"
+              style={{background:filterPriority===p?"#6366f122":"var(--s2)",color:filterPriority===p?"#6366f1":"var(--muted)",fontWeight:filterPriority===p?700:400,border:`1px solid ${filterPriority===p?"#6366f144":"var(--border)"}`}}>
+              {p?PRIORITY_CFG[p].label:"All Pri"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Task board */}
+      {isLoading&&<p className="text-center py-8 text-sm" style={{color:"var(--muted)"}}>Loading tasks...</p>}
+      {!isLoading&&filtered.length===0&&(
+        <div className="v-card rounded-2xl p-10 text-center">
+          <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{background:"rgba(99,102,241,0.1)"}}>
+            <Sparkles size={24} color="#6366f1"/>
+          </div>
+          <p className="text-sm font-semibold mb-1" style={{color:"var(--text)"}}>No tasks yet</p>
+          <p className="text-xs mb-4" style={{color:"var(--muted)"}}>Add manually or let AI generate tasks from your live data</p>
+          <button onClick={()=>setAiPanel(true)} className="px-4 py-2 rounded-xl text-xs font-semibold" style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"white"}}>
+            <Sparkles size={12} className="inline mr-1"/>Generate with AI
+          </button>
+        </div>
+      )}
+      <div className="space-y-2">
+        {filtered.map((t:any)=>{
+          const p=PRIORITY_CFG[t.priority]||PRIORITY_CFG.NORMAL;
+          const s=STATUS_CFG[t.status]||STATUS_CFG.PENDING;
+          const c=CAT_CFG[t.category]||CAT_CFG.GENERAL;
+          const expanded=expandedId===t.id;
+          const isOverdue=t.isOverdue;
+          const deadline=t.deadline?new Date(t.deadline):null;
+          const daysLeft=deadline?Math.ceil((deadline.getTime()-now.getTime())/86400000):null;
+          return(
+            <div key={t.id} className="v-card rounded-xl overflow-hidden transition-all"
+              style={{borderLeft:`3px solid ${t.status==="COMPLETED"?"var(--border)":p.color}`,opacity:t.status==="COMPLETED"?0.65:1}}>
+              <div className="p-3.5">
+                <div className="flex items-start gap-3">
+                  {/* Status cycle button */}
+                  <button onClick={()=>cycleStatus(t)}
+                    className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 transition-all border-2"
+                    title={`Click to mark as ${STATUS_CYCLE[t.status]}`}
+                    style={{borderColor:s.color,background:t.status==="COMPLETED"?s.color:"transparent"}}>
+                    {t.status==="COMPLETED"&&<Check size={10} color="white" strokeWidth={3}/>}
+                    {t.status==="ONGOING"&&<div className="w-2 h-2 rounded-full" style={{background:s.color}}/>}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold leading-tight" style={{color:"var(--text)",textDecoration:t.status==="COMPLETED"?"line-through":"none"}}>{t.title}</p>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {t.source==="AI"&&<span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{background:"rgba(99,102,241,0.15)",color:"#6366f1"}}>✦ AI</span>}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{background:p.bg,color:p.color}}>{p.label}</span>
+                        <button onClick={()=>deleteTask(t.id)} className="p-1 rounded-lg opacity-40 hover:opacity-100 transition-opacity"><Trash2 size={11} color="#ef4444"/></button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{background:c.color+"22",color:c.color}}>{c.label}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{background:s.color+"22",color:s.color}}>{s.label}</span>
+                      {t.assignedTo&&<span className="text-[10px]" style={{color:"var(--muted)"}}>→ {t.assignedTo}</span>}
+                      {t.relatedRef&&<span className="text-[10px] font-medium" style={{color:"#f59e0b"}}>#{t.relatedRef}</span>}
+                      {deadline&&(
+                        <span className="flex items-center gap-0.5 text-[10px]" style={{color:isOverdue?"#ef4444":daysLeft!==null&&daysLeft<=2?"#f59e0b":"var(--muted)"}}>
+                          <Clock size={9}/>{isOverdue?`${Math.abs(daysLeft??0)}d overdue`:daysLeft===0?"Today":daysLeft===1?"Tomorrow":`${daysLeft}d left`}
+                        </span>
+                      )}
+                    </div>
+                    {t.description&&<p className="text-[11px] mt-1.5 leading-relaxed" style={{color:"var(--muted)"}}>{t.description}</p>}
+                  </div>
+                  <button onClick={()=>setExpandedId(expanded?null:t.id)} className="flex-shrink-0 mt-0.5">
+                    {expanded?<ChevronUp size={14} color="var(--muted)"/>:<ChevronDown size={14} color="var(--muted)"/>}
+                  </button>
+                </div>
+                {expanded&&(
+                  <div className="mt-3 pt-3 space-y-2" style={{borderTop:"1px solid var(--border)"}}>
+                    <div className="grid grid-cols-3 gap-2">
+                      {Object.keys(STATUS_CFG).map(st=>(
+                        <button key={st} onClick={()=>updateTask(t.id,{status:st})}
+                          className="py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                          style={{background:t.status===st?STATUS_CFG[st].color+"22":"var(--s2)",color:t.status===st?STATUS_CFG[st].color:"var(--muted)",border:`1px solid ${t.status===st?STATUS_CFG[st].color+"44":"var(--border)"}`}}>
+                          {STATUS_CFG[st].label}
+                        </button>
+                      ))}
+                    </div>
+                    {t.notes&&<p className="text-xs p-2 rounded-lg" style={{background:"var(--s2)",color:"var(--muted)"}}>{t.notes}</p>}
+                    <p className="text-[10px]" style={{color:"var(--subtle)"}}>Created {new Date(t.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
 function BdeView(){
   const qc=useQueryClient();
   const {data:bde=[]}=useQuery({queryKey:["bde"],queryFn:()=>fetch("/api/bde").then(r=>r.json())});
@@ -2485,6 +2822,7 @@ const NAV=[
   {Icon:Receipt,         label:"Invoices",        id:"invoices"},
   {Icon:TrendingDown,    label:"Expenses",        id:"expenses"},
   {Icon:Users,           label:"Staff",           id:"staff"},
+  {Icon:CheckSquare,     label:"Tasks",           id:"tasks"},
   {Icon:BadgePercent,    label:"BDE",             id:"bde"},
   {Icon:Globe,           label:"Public Portal",   id:"portal"},
   {Icon:Settings,        label:"Venue Settings",  id:"settings"},
@@ -2539,6 +2877,7 @@ export default function App(){
     invoices:<InvoicesView/>,
     expenses:<ExpensesView/>,
     staff:<StaffView/>,
+    tasks:<TasksView/>,
     bde:<BdeView/>,
     portal:<PortalView onBook={setBookReq} vc={vc}/>,
     settings:<VenueSettingsView config={vc} onSave={setVenueConfig}/>,

@@ -443,6 +443,7 @@ model Property {
   staff             PropertyStaff[]
   externalCalendars ExternalCalendarSync[]
   pricingRules      PricingRule[]
+  tasks             Task[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -1310,6 +1311,32 @@ model TermsTemplate {
 
   @@index([organizationId])
   @@map("terms_templates")
+}
+
+// =============================================================================
+// AI TASKS
+// =============================================================================
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  assignedTo  String?   @map("assigned_to")
+  priority    String    @default("NORMAL")   // HIGH, MEDIUM, NORMAL
+  deadline    DateTime? @db.Date
+  status      String    @default("PENDING")  // PENDING, ONGOING, COMPLETED
+  category    String    @default("GENERAL")  // FOLLOW_UP, FINANCE, OPERATIONS, ADMIN, GENERAL
+  relatedRef  String?   @map("related_ref")
+  source      String    @default("MANUAL")   // MANUAL, AI
+  notes       String?
+  propertyId  String?   @map("property_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, status])
+  @@map("tasks")
 }
 
 model NotificationLog {
