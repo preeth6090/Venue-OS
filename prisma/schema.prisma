@@ -1,0 +1,1332 @@
+// =============================================================================
+// VenueOS — Enterprise Venue Operations & Revenue Management Platform
+// PostgreSQL via Prisma ORM
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto]
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  SUPER_ADMIN     // Platform-level god mode
+  PROPERTY_ADMIN  // Manages a single property end-to-end
+  SALES_MANAGER   // Oversees BDEs, approves quotes
+  BDE             // Business Development Executive — owns leads/bookings
+  OPERATIONS      // Manages staff, vendors, setup checklists
+  FINANCE         // Accounts/finance team — invoices, P&L, GST reports
+  VIEWER          // Read-only; used for owners, auditors
+
+  @@map("user_role")
+}
+
+enum PropertyType {
+  BANQUET_HALL
+  CONVENTION_CENTER
+  ROOFTOP_VENUE
+  OUTDOOR_LAWN
+  HOTEL_BALLROOM
+  CONFERENCE_CENTER
+  HYBRID
+
+  @@map("property_type")
+}
+
+enum SpaceType {
+  MAIN_HALL
+  BANQUET_HALL
+  CONFERENCE_ROOM
+  BOARD_ROOM
+  BREAKOUT_ROOM
+  FOYER
+  TERRACE
+  LAWN
+  POOL_DECK
+  PARKING_LOT
+  KITCHEN
+  BRIDAL_SUITE
+  VIP_LOUNGE
+
+  @@map("space_type")
+}
+
+enum BookingStatus {
+  ENQUIRY
+  TENTATIVE
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  INVOICED
+  CANCELLED
+  NO_SHOW
+
+  @@map("booking_status")
+}
+
+enum BookingSource {
+  DIRECT
+  WEBSITE
+  REFERRAL
+  SOCIAL_MEDIA
+  AGGREGATOR
+  EXTERNAL_ICAL
+  BDE_OUTREACH
+
+  @@map("booking_source")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  SITE_VISIT_SCHEDULED
+  SITE_VISIT_DONE
+  QUOTE_SENT
+  NEGOTIATION
+  CONVERTED
+  LOST
+  JUNK
+
+  @@map("lead_status")
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  REVISED
+
+  @@map("quote_status")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  VOID
+
+  @@map("invoice_status")
+}
+
+enum PaymentMethod {
+  CASH
+  CHEQUE
+  NEFT
+  RTGS
+  IMPS
+  UPI
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  DEMAND_DRAFT
+
+  @@map("payment_method")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  PARTIAL_REFUND
+
+  @@map("payment_status")
+}
+
+enum GstTreatment {
+  REGISTERED_REGULAR
+  REGISTERED_COMPOSITION
+  UNREGISTERED
+  SEZ_WITH_PAYMENT
+  SEZ_WITHOUT_PAYMENT
+  OVERSEAS
+  DEEMED_EXPORT
+
+  @@map("gst_treatment")
+}
+
+enum IntraInterState {
+  INTRA // CGST + SGST (Karnataka client for Karnataka property)
+  INTER // IGST
+
+  @@map("intra_inter_state")
+}
+
+enum VendorCategory {
+  CATERER
+  DECORATOR
+  AV_TECHNICIAN
+  PHOTOGRAPHER
+  VIDEOGRAPHER
+  BAND_DJ
+  SECURITY_AGENCY
+  HOUSEKEEPING_AGENCY
+  FLORIST
+  VALET_PARKING
+  FURNITURE_RENTAL
+  TENT_HOUSE
+  TRANSPORT
+  CAKE_DESSERTS
+  MISCELLANEOUS
+
+  @@map("vendor_category")
+}
+
+enum VendorComplianceTier {
+  STRICT // Security / housekeeping — background check SLA tracked
+  LIGHT  // Caterers, decorators — contact + pricing only
+
+  @@map("vendor_compliance_tier")
+}
+
+enum StaffRole {
+  SECURITY_GUARD
+  SECURITY_SUPERVISOR
+  HOUSEKEEPING_STAFF
+  HOUSEKEEPING_SUPERVISOR
+  EVENT_COORDINATOR
+  FRONT_DESK
+  VALET
+  BARTENDER
+  SERVER
+
+  @@map("staff_role")
+}
+
+enum BackgroundCheckStatus {
+  NOT_INITIATED
+  IN_PROGRESS
+  CLEARED
+  FLAGGED
+  EXPIRED
+
+  @@map("background_check_status")
+}
+
+enum PricingRuleType {
+  WEEKEND_PREMIUM
+  WEEKDAY_DISCOUNT
+  SEASONAL
+  DEMAND_BASED
+  BLACKOUT
+  EVENT_TYPE
+
+  @@map("pricing_rule_type")
+}
+
+enum ExpenseCategory {
+  CATERING
+  DECORATION
+  HOUSEKEEPING
+  SECURITY
+  AV_SETUP
+  LOGISTICS
+  REPAIRS_MAINTENANCE
+  CONSUMABLES
+  STAFF_OVERTIME
+  VENDOR_PAYMENT
+  REFUND_ISSUED
+  OTHER
+
+  @@map("expense_category")
+}
+
+enum CommissionSlabBasis {
+  NET_MARGIN_PERCENT
+  GROSS_REVENUE
+
+  @@map("commission_slab_basis")
+}
+
+enum ExternalCalendarProvider {
+  AIRBNB
+  GOOGLE_CALENDAR
+  OUTLOOK
+  ICAL_GENERIC
+
+  @@map("external_calendar_provider")
+}
+
+enum EventType {
+  WEDDING
+  RECEPTION
+  ENGAGEMENT
+  BIRTHDAY
+  ANNIVERSARY
+  CORPORATE_CONFERENCE
+  PRODUCT_LAUNCH
+  TOWNHALL
+  TRAINING
+  AWARD_CEREMONY
+  EXHIBITION
+  CONCERT
+  COCKTAIL_PARTY
+  BABY_SHOWER
+  FAREWELL
+  OTHER
+
+  @@map("event_type")
+}
+
+// =============================================================================
+// CORE IDENTITY & AUTH
+// =============================================================================
+
+model Organization {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @db.VarChar(200)
+  slug         String   @unique @db.VarChar(100)
+  logoUrl      String?  @map("logo_url")
+  websiteUrl   String?  @map("website_url")
+  supportEmail String?  @map("support_email")
+  supportPhone String?  @map("support_phone")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  properties     Property[]
+  users          User[]
+  legalEntities  LegalEntity[]
+  termsTemplates TermsTemplate[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  email          String    @unique @db.VarChar(255)
+  passwordHash   String    @map("password_hash")
+  firstName      String    @map("first_name") @db.VarChar(100)
+  lastName       String    @map("last_name") @db.VarChar(100)
+  phone          String?   @db.VarChar(20)
+  avatarUrl      String?   @map("avatar_url")
+  role           UserRole
+  isActive       Boolean   @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+  propertyAccess UserPropertyAccess[]
+  leads          Lead[]               @relation("BdeLeads")
+  bookings       Booking[]            @relation("BdeBookings")
+  quotes         Quote[]              @relation("PreparedBy")
+  invoiceCreated Invoice[]            @relation("InvoiceCreatedBy")
+  expenseCreated Expense[]            @relation("ExpenseCreatedBy")
+  activityLogs   ActivityLog[]
+  commissions    BdeCommission[]
+
+  @@index([organizationId])
+  @@index([role])
+  @@map("users")
+}
+
+model UserPropertyAccess {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  grantedAt  DateTime @default(now()) @map("granted_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("user_property_access")
+}
+
+// =============================================================================
+// PROPERTY & LEGAL ENTITY
+// =============================================================================
+
+model LegalEntity {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  legalName       String   @map("legal_name") @db.VarChar(300)
+  tradeName       String?  @map("trade_name") @db.VarChar(300)
+  gstin           String   @unique @db.VarChar(15)
+  pan             String   @db.VarChar(10)
+  tan             String?  @db.VarChar(10)
+  cin             String?  @db.VarChar(21)
+  stateCode       String   @map("state_code") @db.VarChar(2)   // e.g., "29" for Karnataka
+  stateName       String   @map("state_name") @db.VarChar(100)
+  regAddressLine1 String   @map("reg_address_line1")
+  regAddressLine2 String?  @map("reg_address_line2")
+  regCity         String   @map("reg_city") @db.VarChar(100)
+  regState        String   @map("reg_state") @db.VarChar(100)
+  regPincode      String   @map("reg_pincode") @db.VarChar(10)
+  logoUrl         String?  @map("logo_url")
+  signatureUrl    String?  @map("signature_url")
+  invoicePrefix   String   @map("invoice_prefix") @db.VarChar(20) // e.g., "VOS/2425/"
+  invoiceCounter  Int      @default(1) @map("invoice_counter") // Incremented atomically via row lock
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  bankAccounts BankAccount[]
+  properties   Property[]
+  invoices     Invoice[]
+
+  @@index([organizationId])
+  @@map("legal_entities")
+}
+
+model BankAccount {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  legalEntityId String   @map("legal_entity_id") @db.Uuid
+  bankName      String   @map("bank_name") @db.VarChar(200)
+  branchName    String   @map("branch_name") @db.VarChar(200)
+  accountName   String   @map("account_name") @db.VarChar(300)
+  accountNumber String   @map("account_number") @db.VarChar(30)
+  ifscCode      String   @map("ifsc_code") @db.VarChar(11)
+  accountType   String   @map("account_type") @db.VarChar(30)
+  upiId         String?  @map("upi_id")
+  isPrimary     Boolean  @default(false) @map("is_primary")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  @@index([legalEntityId])
+  @@map("bank_accounts")
+}
+
+model Property {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  legalEntityId   String       @map("legal_entity_id") @db.Uuid
+  name            String       @db.VarChar(200)
+  slug            String       @db.VarChar(100)
+  propertyType    PropertyType @map("property_type")
+  addressLine1    String       @map("address_line1")
+  addressLine2    String?      @map("address_line2")
+  city            String       @db.VarChar(100)
+  state           String       @db.VarChar(100)
+  stateCode       String       @map("state_code") @db.VarChar(2) // GST state code for intra/inter calc
+  pincode         String       @db.VarChar(10)
+  latitude        Decimal?     @db.Decimal(10, 7)
+  longitude       Decimal?     @db.Decimal(10, 7)
+  phone           String?      @db.VarChar(20)
+  email           String?      @db.VarChar(255)
+  websiteUrl      String?      @map("website_url")
+  coverImageUrl   String?      @map("cover_image_url")
+  totalCapacity   Int?         @map("total_capacity")
+  parkingCapacity Int?         @map("parking_capacity")
+  amenities           String[]
+  venuePortalConfig   Json?    @map("venue_portal_config")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  organization      Organization           @relation(fields: [organizationId], references: [id])
+  legalEntity       LegalEntity            @relation(fields: [legalEntityId], references: [id])
+  spaces            Space[]
+  userAccess        UserPropertyAccess[]
+  leads             Lead[]
+  bookings          Booking[]
+  vendors           PropertyVendor[]
+  staff             PropertyStaff[]
+  externalCalendars ExternalCalendarSync[]
+  pricingRules      PricingRule[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([legalEntityId])
+  @@map("properties")
+}
+
+// =============================================================================
+// SPACES
+// =============================================================================
+
+model Space {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId        String    @map("property_id") @db.Uuid
+  name              String    @db.VarChar(200)
+  spaceType         SpaceType @map("space_type")
+  description       String?
+  floorLevel        String?   @map("floor_level") @db.VarChar(50)
+  areaSqft          Int?      @map("area_sqft")
+  theatreCapacity   Int?      @map("theatre_capacity")
+  classroomCapacity Int?      @map("classroom_capacity")
+  banquetCapacity   Int?      @map("banquet_capacity")
+  cocktailCapacity  Int?      @map("cocktail_capacity")
+  floatingCapacity  Int?      @map("floating_capacity")
+  baseRatePerHour   Decimal?  @map("base_rate_per_hour") @db.Decimal(12, 2)
+  baseRatePerDay    Decimal?  @map("base_rate_per_day") @db.Decimal(12, 2)
+  sacCode           String    @default("997212") @map("sac_code") @db.VarChar(8)
+  gstRatePercent    Decimal   @default(18) @map("gst_rate_percent") @db.Decimal(5, 2)
+  amenities         String[]
+  imageUrls         String[]  @map("image_urls")
+  isIndependent     Boolean   @default(true) @map("is_independent")
+  isActive          Boolean   @default(true) @map("is_active")
+  displayOrder      Int       @default(0) @map("display_order")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  bookingSpaces BookingSpace[]
+  pricingRules  PricingRule[]
+  blockedSlots  BlockedSlot[]
+
+  @@index([propertyId])
+  @@map("spaces")
+}
+
+model BlockedSlot {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId   String   @map("space_id") @db.Uuid
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+  reason    String?
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([spaceId, startTime, endTime])
+  @@map("blocked_slots")
+}
+
+// =============================================================================
+// PRICING RULES
+// =============================================================================
+
+model PricingRule {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId       String          @map("property_id") @db.Uuid
+  spaceId          String?         @map("space_id") @db.Uuid // null = applies to whole property
+  ruleType         PricingRuleType @map("rule_type")
+  name             String          @db.VarChar(200)
+  description      String?
+  multiplier       Decimal         @db.Decimal(5, 3) // 1.25 = 25% premium, 0.85 = 15% discount
+  daysOfWeek       Int[]           @map("days_of_week") // 0=Sun, 6=Sat
+  validFrom        DateTime?       @map("valid_from") @db.Date
+  validTo          DateTime?       @map("valid_to") @db.Date
+  applicableEvents EventType[]     @map("applicable_events")
+  priority         Int             @default(10) // Lower = higher priority when rules stack
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  space    Space?   @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, isActive])
+  @@index([spaceId, isActive])
+  @@map("pricing_rules")
+}
+
+// =============================================================================
+// CLIENT CRM
+// =============================================================================
+
+model Client {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  legalName         String       @map("legal_name") @db.VarChar(300)
+  displayName       String       @map("display_name") @db.VarChar(300)
+  clientType        String       @map("client_type") @db.VarChar(50) // Individual / Company / NGO / Govt
+  gstin             String?      @unique @db.VarChar(15)
+  pan               String?      @db.VarChar(10)
+  gstTreatment      GstTreatment @default(UNREGISTERED) @map("gst_treatment")
+  stateCode         String?      @map("state_code") @db.VarChar(2) // Used to determine INTRA vs INTER GST
+  stateName         String?      @map("state_name") @db.VarChar(100)
+  billAddressLine1  String?      @map("bill_address_line1")
+  billAddressLine2  String?      @map("bill_address_line2")
+  billCity          String?      @map("bill_city") @db.VarChar(100)
+  billState         String?      @map("bill_state") @db.VarChar(100)
+  billPincode       String?      @map("bill_pincode") @db.VarChar(10)
+  email             String?      @db.VarChar(255)
+  phone             String?      @db.VarChar(20)
+  alternatePhone    String?      @map("alternate_phone") @db.VarChar(20)
+  website           String?      @db.VarChar(255)
+  notes             String?
+  tags              String[]
+  totalEventsHosted Int          @default(0) @map("total_events_hosted")
+  totalRevenueGen   Decimal      @default(0) @map("total_revenue_gen") @db.Decimal(14, 2)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  pointsOfContact ClientPOC[]
+  leads           Lead[]
+  bookings        Booking[]
+  invoices        Invoice[]
+
+  @@index([gstin])
+  @@index([phone])
+  @@map("clients")
+}
+
+model ClientPOC {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId    String   @map("client_id") @db.Uuid
+  name        String   @db.VarChar(200)
+  designation String?  @db.VarChar(200)
+  email       String?  @db.VarChar(255)
+  phone       String   @db.VarChar(20)
+  whatsapp    String?  @db.VarChar(20)
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("client_pocs")
+}
+
+// =============================================================================
+// LEADS PIPELINE
+// =============================================================================
+
+model Lead {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId     String        @map("property_id") @db.Uuid
+  clientId       String?       @map("client_id") @db.Uuid
+  assignedBdeId  String?       @map("assigned_bde_id") @db.Uuid
+  contactName    String?       @map("contact_name") @db.VarChar(200)
+  contactPhone   String?       @map("contact_phone") @db.VarChar(20)
+  contactEmail   String?       @map("contact_email") @db.VarChar(255)
+  eventType      EventType?    @map("event_type")
+  tentativeDate  DateTime?     @map("tentative_date") @db.Date
+  expectedPax    Int?          @map("expected_pax")
+  budgetMin      Decimal?      @map("budget_min") @db.Decimal(12, 2)
+  budgetMax      Decimal?      @map("budget_max") @db.Decimal(12, 2)
+  source         BookingSource @map("source")
+  sourceDetails  String?       @map("source_details")
+  status         LeadStatus    @default(NEW)
+  lostReason     String?       @map("lost_reason")
+  notes          String?
+  nextFollowUpAt DateTime?     @map("next_follow_up_at")
+  convertedAt    DateTime?     @map("converted_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  property    Property       @relation(fields: [propertyId], references: [id])
+  client      Client?        @relation(fields: [clientId], references: [id])
+  assignedBde User?          @relation("BdeLeads", fields: [assignedBdeId], references: [id])
+  activities  LeadActivity[]
+  quotes      Quote[]
+  booking     Booking?
+
+  @@index([propertyId, status])
+  @@index([assignedBdeId])
+  @@index([tentativeDate])
+  @@map("leads")
+}
+
+model LeadActivity {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leadId       String   @map("lead_id") @db.Uuid
+  activityType String   @map("activity_type") @db.VarChar(50) // CALL, EMAIL, SITE_VISIT, WHATSAPP
+  summary      String
+  outcome      String?
+  performedAt  DateTime @map("performed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_activities")
+}
+
+// =============================================================================
+// QUOTES
+// =============================================================================
+
+model Quote {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leadId          String      @map("lead_id") @db.Uuid
+  quoteNumber     String      @unique @map("quote_number") @db.VarChar(50) // e.g., "Q-2425-0042"
+  preparedById    String      @map("prepared_by_id") @db.Uuid
+  version         Int         @default(1)
+  status          QuoteStatus @default(DRAFT)
+  eventType       EventType   @map("event_type")
+  eventDate       DateTime    @map("event_date") @db.Date
+  eventStartTime  DateTime    @map("event_start_time")
+  eventEndTime    DateTime    @map("event_end_time")
+  expectedPax     Int         @map("expected_pax")
+  subtotal        Decimal     @db.Decimal(12, 2)
+  discountAmount  Decimal     @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  discountPercent Decimal     @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  taxableAmount   Decimal     @map("taxable_amount") @db.Decimal(12, 2)
+  cgstAmount      Decimal     @default(0) @map("cgst_amount") @db.Decimal(12, 2)
+  sgstAmount      Decimal     @default(0) @map("sgst_amount") @db.Decimal(12, 2)
+  igstAmount      Decimal     @default(0) @map("igst_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal     @map("total_amount") @db.Decimal(12, 2)
+  validUntil      DateTime    @map("valid_until") @db.Date
+  notes           String?
+  termsConditions String?     @map("terms_conditions")
+  sentAt          DateTime?   @map("sent_at")
+  acceptedAt      DateTime?   @map("accepted_at")
+  rejectedAt      DateTime?   @map("rejected_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  lead       Lead            @relation(fields: [leadId], references: [id])
+  preparedBy User            @relation("PreparedBy", fields: [preparedById], references: [id])
+  lineItems  QuoteLineItem[]
+
+  @@index([leadId])
+  @@map("quotes")
+}
+
+model QuoteLineItem {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quoteId        String  @map("quote_id") @db.Uuid
+  description    String
+  sacCode        String  @map("sac_code") @db.VarChar(8)
+  quantity       Decimal @db.Decimal(10, 3)
+  unit           String  @db.VarChar(20) // hours, pax, lump sum, sqft
+  unitRate       Decimal @map("unit_rate") @db.Decimal(12, 2)
+  amount         Decimal @db.Decimal(12, 2) // quantity * unitRate
+  gstRatePercent Decimal @map("gst_rate_percent") @db.Decimal(5, 2)
+  displayOrder   Int     @default(0) @map("display_order")
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_line_items")
+}
+
+// =============================================================================
+// BOOKINGS
+// =============================================================================
+
+model Booking {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId         String        @map("property_id") @db.Uuid
+  clientId           String        @map("client_id") @db.Uuid
+  leadId             String?       @unique @map("lead_id") @db.Uuid
+  bdeId              String?       @map("bde_id") @db.Uuid
+  bookingRef         String        @unique @map("booking_ref") @db.VarChar(50) // e.g., "BK-2425-0101"
+  status             BookingStatus @default(TENTATIVE)
+  source             BookingSource @map("source")
+  eventType          EventType     @map("event_type")
+  eventName          String?       @map("event_name") @db.VarChar(300)
+  setupStartTime     DateTime      @map("setup_start_time")
+  eventStartTime     DateTime      @map("event_start_time")
+  eventEndTime       DateTime      @map("event_end_time")
+  teardownEndTime    DateTime      @map("teardown_end_time")
+  expectedPax        Int           @map("expected_pax")
+  actualPax          Int?          @map("actual_pax")
+  quotedAmount       Decimal       @map("quoted_amount") @db.Decimal(12, 2)
+  finalAmount        Decimal?      @map("final_amount") @db.Decimal(12, 2)
+  depositAmount      Decimal       @default(0) @map("deposit_amount") @db.Decimal(12, 2)
+  depositPaidAt      DateTime?     @map("deposit_paid_at")
+  discountAmount     Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  discountReason     String?       @map("discount_reason")
+  externalCalUid     String?       @map("external_cal_uid") @db.VarChar(500)
+  externalSyncId     String?       @map("external_sync_id") @db.Uuid
+  notes              String?
+  internalNotes      String?       @map("internal_notes")
+  specialRequests    String?       @map("special_requests")
+  cancelledAt        DateTime?     @map("cancelled_at")
+  cancellationReason String?       @map("cancellation_reason")
+  completedAt        DateTime?     @map("completed_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  property          Property                  @relation(fields: [propertyId], references: [id])
+  client            Client                    @relation(fields: [clientId], references: [id])
+  lead              Lead?                     @relation(fields: [leadId], references: [id])
+  bde               User?                     @relation("BdeBookings", fields: [bdeId], references: [id])
+  externalSync      ExternalCalendarSync?     @relation(fields: [externalSyncId], references: [id])
+  bookingSpaces     BookingSpace[]
+  invoices          Invoice[]
+  expenses          Expense[]
+  payments          Payment[]
+  staffAssignments  BookingStaffAssignment[]
+  vendorAssignments BookingVendorAssignment[]
+  commission        BdeCommission?
+  checklist         BookingChecklist[]
+  documents         BookingDocument[]
+
+  @@index([propertyId, eventStartTime])
+  @@index([clientId])
+  @@index([bdeId])
+  @@index([status])
+  @@map("bookings")
+}
+
+// Junction: which spaces are used in a booking.
+// COLLISION DETECTION: add this constraint via migration SQL:
+//   ALTER TABLE booking_spaces ADD CONSTRAINT no_space_overlap
+//   EXCLUDE USING gist (space_id WITH =, tstzrange(start_time, end_time) WITH &&)
+//   WHERE (status NOT IN ('CANCELLED'));
+// Prisma cannot express EXCLUDE constraints natively.
+model BookingSpace {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId         String   @map("booking_id") @db.Uuid
+  spaceId           String   @map("space_id") @db.Uuid
+  startTime         DateTime @map("start_time")
+  endTime           DateTime @map("end_time")
+  baseRate          Decimal  @map("base_rate") @db.Decimal(12, 2)
+  appliedMultiplier Decimal  @default(1) @map("applied_multiplier") @db.Decimal(5, 3)
+  negotiatedRate    Decimal? @map("negotiated_rate") @db.Decimal(12, 2)
+  finalRate         Decimal  @map("final_rate") @db.Decimal(12, 2)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  space   Space   @relation(fields: [spaceId], references: [id])
+
+  @@index([spaceId, startTime, endTime])
+  @@index([bookingId])
+  @@map("booking_spaces")
+}
+
+// =============================================================================
+// INVOICES & PAYMENTS (GST-COMPLIANT)
+// =============================================================================
+
+model Invoice {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  legalEntityId   String          @map("legal_entity_id") @db.Uuid
+  bookingId       String          @map("booking_id") @db.Uuid
+  clientId        String          @map("client_id") @db.Uuid
+  createdById     String          @map("created_by_id") @db.Uuid
+  invoiceNumber   String          @unique @map("invoice_number") @db.VarChar(50)
+  invoiceDate     DateTime        @map("invoice_date") @db.Date
+  dueDate         DateTime        @map("due_date") @db.Date
+  status          InvoiceStatus   @default(DRAFT)
+  supplyType      IntraInterState @map("supply_type") // Computed from property.stateCode vs client.stateCode
+  placeOfSupply   String          @map("place_of_supply") @db.VarChar(2)
+  subtotal        Decimal         @db.Decimal(12, 2)
+  discountAmount  Decimal         @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  taxableAmount   Decimal         @map("taxable_amount") @db.Decimal(12, 2)
+  cgstAmount      Decimal         @default(0) @map("cgst_amount") @db.Decimal(12, 2)  // 0 if INTER
+  sgstAmount      Decimal         @default(0) @map("sgst_amount") @db.Decimal(12, 2)  // 0 if INTER
+  igstAmount      Decimal         @default(0) @map("igst_amount") @db.Decimal(12, 2)  // 0 if INTRA
+  tdsDeducted     Decimal         @default(0) @map("tds_deducted") @db.Decimal(12, 2)
+  totalAmount     Decimal         @map("total_amount") @db.Decimal(12, 2)
+  amountPaid      Decimal         @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  amountDue       Decimal         @map("amount_due") @db.Decimal(12, 2)
+  irnNumber       String?         @map("irn_number") @db.VarChar(100) // e-invoicing IRN
+  irnGeneratedAt  DateTime?       @map("irn_generated_at")
+  eWayBillNumber  String?         @map("e_way_bill_number") @db.VarChar(20)
+  notes           String?
+  termsConditions String?         @map("terms_conditions")
+  pdfUrl          String?         @map("pdf_url")
+  sentAt          DateTime?       @map("sent_at")
+  paidAt          DateTime?       @map("paid_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  legalEntity LegalEntity       @relation(fields: [legalEntityId], references: [id])
+  booking     Booking           @relation(fields: [bookingId], references: [id])
+  client      Client            @relation(fields: [clientId], references: [id])
+  createdBy   User              @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  lineItems   InvoiceLineItem[]
+  payments    Payment[]
+  creditNotes CreditNote[]
+
+  @@index([bookingId])
+  @@index([clientId])
+  @@index([invoiceDate])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId      String  @map("invoice_id") @db.Uuid
+  description    String
+  sacCode        String  @map("sac_code") @db.VarChar(8) // 997212=venue hire, 996334=catering
+  hsnCode        String? @map("hsn_code") @db.VarChar(8)
+  quantity       Decimal @db.Decimal(10, 3)
+  unit           String  @db.VarChar(20)
+  unitRate       Decimal @map("unit_rate") @db.Decimal(12, 2)
+  amount         Decimal @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  taxableAmount  Decimal @map("taxable_amount") @db.Decimal(12, 2)
+  gstRatePercent Decimal @map("gst_rate_percent") @db.Decimal(5, 2)
+  cgstRate       Decimal @default(0) @map("cgst_rate") @db.Decimal(5, 2)
+  sgstRate       Decimal @default(0) @map("sgst_rate") @db.Decimal(5, 2)
+  igstRate       Decimal @default(0) @map("igst_rate") @db.Decimal(5, 2)
+  cgstAmount     Decimal @default(0) @map("cgst_amount") @db.Decimal(12, 2)
+  sgstAmount     Decimal @default(0) @map("sgst_amount") @db.Decimal(12, 2)
+  igstAmount     Decimal @default(0) @map("igst_amount") @db.Decimal(12, 2)
+  lineTotal      Decimal @map("line_total") @db.Decimal(12, 2)
+  displayOrder   Int     @default(0) @map("display_order")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+model CreditNote {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String   @map("invoice_id") @db.Uuid
+  creditNoteNumber String   @unique @map("credit_note_number") @db.VarChar(50)
+  creditNoteDate   DateTime @map("credit_note_date") @db.Date
+  reason           String
+  amount           Decimal  @db.Decimal(12, 2)
+  cgstAmount       Decimal  @default(0) @map("cgst_amount") @db.Decimal(12, 2)
+  sgstAmount       Decimal  @default(0) @map("sgst_amount") @db.Decimal(12, 2)
+  igstAmount       Decimal  @default(0) @map("igst_amount") @db.Decimal(12, 2)
+  totalAmount      Decimal  @map("total_amount") @db.Decimal(12, 2)
+  pdfUrl           String?  @map("pdf_url")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("credit_notes")
+}
+
+model Payment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId       String?       @map("invoice_id") @db.Uuid // null for advance/deposit payments
+  bookingId       String        @map("booking_id") @db.Uuid
+  paymentMethod   PaymentMethod @map("payment_method")
+  status          PaymentStatus @default(PENDING)
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String        @default("INR") @db.VarChar(3)
+  referenceNumber String?       @map("reference_number") @db.VarChar(100) // UTR, cheque no., etc.
+  bankName        String?       @map("bank_name") @db.VarChar(100)
+  paymentDate     DateTime      @map("payment_date") @db.Date
+  notes           String?
+  receiptUrl      String?       @map("receipt_url")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  booking Booking  @relation(fields: [bookingId], references: [id])
+
+  @@index([invoiceId])
+  @@index([bookingId])
+  @@map("payments")
+}
+
+// =============================================================================
+// EXPENSES & P&L
+// =============================================================================
+
+model Expense {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId       String          @map("booking_id") @db.Uuid
+  vendorId        String?         @map("vendor_id") @db.Uuid
+  createdById     String          @map("created_by_id") @db.Uuid
+  category        ExpenseCategory
+  description     String
+  amount          Decimal         @db.Decimal(12, 2)
+  gstAmount       Decimal         @default(0) @map("gst_amount") @db.Decimal(12, 2)
+  netAmount       Decimal         @map("net_amount") @db.Decimal(12, 2)
+  expenseDate     DateTime        @map("expense_date") @db.Date
+  referenceNumber String?         @map("reference_number") @db.VarChar(100)
+  receiptUrl      String?         @map("receipt_url")
+  isReimbursable  Boolean         @default(false) @map("is_reimbursable")
+  isApproved      Boolean         @default(false) @map("is_approved")
+  approvedById    String?         @map("approved_by_id") @db.Uuid
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  vendor    Vendor? @relation(fields: [vendorId], references: [id])
+  createdBy User    @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+
+  @@index([bookingId])
+  @@index([vendorId])
+  @@index([category])
+  @@map("expenses")
+}
+
+// =============================================================================
+// VENDOR MANAGEMENT
+// =============================================================================
+
+model Vendor {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String                @db.VarChar(300)
+  category          VendorCategory
+  complianceTier    VendorComplianceTier  @map("compliance_tier")
+  contactPersonName String?               @map("contact_person_name") @db.VarChar(200)
+  phone             String                @db.VarChar(20)
+  alternatePhone    String?               @map("alternate_phone") @db.VarChar(20)
+  email             String?               @db.VarChar(255)
+  gstin             String?               @db.VarChar(15)
+  pan               String?               @db.VarChar(10)
+  gstTreatment      GstTreatment          @default(UNREGISTERED) @map("gst_treatment")
+  addressLine1      String?               @map("address_line1")
+  addressLine2      String?               @map("address_line2")
+  city              String?               @db.VarChar(100)
+  state             String?               @db.VarChar(100)
+  pincode           String?               @db.VarChar(10)
+  baseRatePerEvent  Decimal?              @map("base_rate_per_event") @db.Decimal(12, 2)
+  baseRatePerPax    Decimal?              @map("base_rate_per_pax") @db.Decimal(12, 2)
+  rateNotes         String?               @map("rate_notes")
+  // STRICT-tier compliance fields (security/housekeeping agencies)
+  policeVerified    Boolean               @default(false) @map("police_verified")
+  bgvAgencyName     String?               @map("bgv_agency_name")
+  bgvCertUrl        String?               @map("bgv_cert_url")
+  bgvExpiresAt      DateTime?             @map("bgv_expires_at") @db.Date
+  licenseNumber     String?               @map("license_number")
+  licenseExpiresAt  DateTime?             @map("license_expires_at") @db.Date
+  bgCheckStatus     BackgroundCheckStatus @default(NOT_INITIATED) @map("bg_check_status")
+  rating            Decimal?              @db.Decimal(3, 2)
+  isBlacklisted     Boolean               @default(false) @map("is_blacklisted")
+  blacklistReason   String?               @map("blacklist_reason")
+  notes             String?
+  tags              String[]
+  isActive          Boolean               @default(true) @map("is_active")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  propertyLinks      PropertyVendor[]
+  bookingAssignments BookingVendorAssignment[]
+  suppliedStaff      PropertyStaff[]           @relation("StaffSuppliedByVendor")
+  expenses           Expense[]
+  bgvSlaLogs         VendorBgvSlaLog[]
+
+  @@index([category])
+  @@index([complianceTier])
+  @@index([bgCheckStatus])
+  @@map("vendors")
+}
+
+model PropertyVendor {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId  String   @map("property_id") @db.Uuid
+  vendorId    String   @map("vendor_id") @db.Uuid
+  isPreferred Boolean  @default(false) @map("is_preferred")
+  addedAt     DateTime @default(now()) @map("added_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  vendor   Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, vendorId])
+  @@map("property_vendors")
+}
+
+model BookingVendorAssignment {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId    String    @map("booking_id") @db.Uuid
+  vendorId     String    @map("vendor_id") @db.Uuid
+  serviceDesc  String?   @map("service_desc")
+  agreedAmount Decimal?  @map("agreed_amount") @db.Decimal(12, 2)
+  paidAmount   Decimal   @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  notes        String?
+  confirmedAt  DateTime? @map("confirmed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vendor  Vendor  @relation(fields: [vendorId], references: [id])
+
+  @@unique([bookingId, vendorId])
+  @@map("booking_vendor_assignments")
+}
+
+model VendorBgvSlaLog {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendorId       String                @map("vendor_id") @db.Uuid
+  previousStatus BackgroundCheckStatus @map("previous_status")
+  newStatus      BackgroundCheckStatus @map("new_status")
+  changedBy      String?               @map("changed_by") @db.Uuid
+  notes          String?
+  dueDate        DateTime?             @map("due_date") @db.Date
+  resolvedAt     DateTime?             @map("resolved_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("vendor_bgv_sla_logs")
+}
+
+// =============================================================================
+// STAFF MANAGEMENT
+// =============================================================================
+
+model PropertyStaff {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId     String                @map("property_id") @db.Uuid
+  vendorId       String?               @map("vendor_id") @db.Uuid // null = direct hire
+  firstName      String                @map("first_name") @db.VarChar(100)
+  lastName       String                @map("last_name") @db.VarChar(100)
+  staffRole      StaffRole             @map("staff_role")
+  category       String?               @db.VarChar(50) // security, housekeeping, maintenance, etc.
+  shift          String?               @db.VarChar(100)
+  vendorName     String?               @map("vendor_name") @db.VarChar(200)
+  phone          String                @db.VarChar(20)
+  alternatePhone String?               @map("alternate_phone") @db.VarChar(20)
+  aadhaarRef     String?               @map("aadhaar_ref") @db.VarChar(20) // Masked last-4 only
+  policeVerified Boolean               @default(false) @map("police_verified")
+  bgCheckStatus  BackgroundCheckStatus @default(NOT_INITIATED) @map("bg_check_status")
+  bgvAgencyName  String?               @map("bgv_agency_name")
+  bgvCertUrl     String?               @map("bgv_cert_url")
+  bgvExpiresAt   DateTime?             @map("bgv_expires_at") @db.Date // SLA renewal deadline
+  photoUrl       String?               @map("photo_url")
+  joiningDate    DateTime?             @map("joining_date") @db.Date
+  isActive       Boolean               @default(true) @map("is_active")
+  notes          String?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  property    Property                 @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  vendor      Vendor?                  @relation("StaffSuppliedByVendor", fields: [vendorId], references: [id])
+  assignments BookingStaffAssignment[]
+
+  @@index([propertyId])
+  @@index([vendorId])
+  @@index([bgCheckStatus])
+  @@map("property_staff")
+}
+
+model BookingStaffAssignment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId  String   @map("booking_id") @db.Uuid
+  staffId    String   @map("staff_id") @db.Uuid
+  role       String?  @db.VarChar(100)
+  startTime  DateTime @map("start_time")
+  endTime    DateTime @map("end_time")
+  notes      String?
+  checkedIn  Boolean  @default(false) @map("checked_in")
+  checkedOut Boolean  @default(false) @map("checked_out")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  booking Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  staff   PropertyStaff @relation(fields: [staffId], references: [id])
+
+  @@unique([bookingId, staffId])
+  @@map("booking_staff_assignments")
+}
+
+// =============================================================================
+// BDE INCENTIVE / COMMISSION ENGINE
+// =============================================================================
+
+model CommissionPlan {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String              @db.VarChar(200)
+  propertyId    String?             @map("property_id") @db.Uuid // null = org-wide default
+  basis         CommissionSlabBasis
+  isActive      Boolean             @default(true) @map("is_active")
+  effectiveFrom DateTime            @map("effective_from") @db.Date
+  effectiveTo   DateTime?           @map("effective_to") @db.Date
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  slabs       CommissionSlab[]
+  commissions BdeCommission[]
+
+  @@index([propertyId])
+  @@map("commission_plans")
+}
+
+model CommissionSlab {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId         String   @map("plan_id") @db.Uuid
+  minAmount      Decimal  @map("min_amount") @db.Decimal(12, 2)
+  maxAmount      Decimal? @map("max_amount") @db.Decimal(12, 2) // null = no upper limit
+  commissionRate Decimal  @map("commission_rate") @db.Decimal(5, 2) // percentage, e.g., 2.50
+
+  plan CommissionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@map("commission_slabs")
+}
+
+model BdeCommission {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId        String    @unique @map("booking_id") @db.Uuid
+  bdeId            String    @map("bde_id") @db.Uuid
+  planId           String    @map("plan_id") @db.Uuid
+  grossRevenue     Decimal   @map("gross_revenue") @db.Decimal(12, 2)
+  totalExpenses    Decimal   @map("total_expenses") @db.Decimal(12, 2)
+  netMargin        Decimal   @map("net_margin") @db.Decimal(12, 2) // grossRevenue - totalExpenses
+  commissionBase   Decimal   @map("commission_base") @db.Decimal(12, 2)
+  commissionRate   Decimal   @map("commission_rate") @db.Decimal(5, 2)
+  commissionAmount Decimal   @map("commission_amount") @db.Decimal(12, 2)
+  isPaid           Boolean   @default(false) @map("is_paid")
+  paidAt           DateTime? @map("paid_at")
+  paymentRef       String?   @map("payment_ref") @db.VarChar(100)
+  notes            String?
+  computedAt       DateTime  @default(now()) @map("computed_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  booking Booking        @relation(fields: [bookingId], references: [id])
+  bde     User           @relation(fields: [bdeId], references: [id])
+  plan    CommissionPlan @relation(fields: [planId], references: [id])
+
+  @@index([bdeId])
+  @@index([isPaid])
+  @@map("bde_commissions")
+}
+
+// =============================================================================
+// EXTERNAL CALENDAR SYNC (iCal / Airbnb)
+// =============================================================================
+
+model ExternalCalendarSync {
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId          String                   @map("property_id") @db.Uuid
+  provider            ExternalCalendarProvider
+  calendarName        String?                  @map("calendar_name") @db.VarChar(200)
+  icalUrl             String                   @map("ical_url")
+  lastSyncedAt        DateTime?                @map("last_synced_at")
+  syncIntervalMinutes Int                      @default(60) @map("sync_interval_minutes")
+  isActive            Boolean                  @default(true) @map("is_active")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  property               Property               @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  externalCalendarEvents ExternalCalendarEvent[]
+  bookings               Booking[]
+
+  @@index([propertyId])
+  @@map("external_calendar_syncs")
+}
+
+model ExternalCalendarEvent {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  syncId            String    @map("sync_id") @db.Uuid
+  uid               String    @db.VarChar(500) // UID from .ics VEVENT
+  summary           String?   @db.VarChar(500)
+  description       String?
+  startTime         DateTime  @map("start_time")
+  endTime           DateTime  @map("end_time")
+  location          String?   @db.VarChar(300)
+  status            String?   @db.VarChar(50) // CONFIRMED / TENTATIVE / CANCELLED per iCal spec
+  rawPayload        Json      @map("raw_payload")
+  isBlocking        Boolean   @default(true) @map("is_blocking")
+  lastUpdatedInFeed DateTime? @map("last_updated_in_feed")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  sync ExternalCalendarSync @relation(fields: [syncId], references: [id], onDelete: Cascade)
+
+  @@unique([syncId, uid])
+  @@index([syncId, startTime, endTime])
+  @@map("external_calendar_events")
+}
+
+// =============================================================================
+// BOOKING OPERATIONS
+// =============================================================================
+
+model BookingChecklist {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId    String    @map("booking_id") @db.Uuid
+  task         String    @db.VarChar(500)
+  assignedTo   String?   @map("assigned_to") @db.VarChar(200)
+  dueTime      DateTime? @map("due_time")
+  isCompleted  Boolean   @default(false) @map("is_completed")
+  completedAt  DateTime? @map("completed_at")
+  notes        String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_checklists")
+}
+
+model BookingDocument {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId     String   @map("booking_id") @db.Uuid
+  documentType  String   @map("document_type") @db.VarChar(100) // CONTRACT, NOC, FLOOR_PLAN
+  fileName      String   @map("file_name") @db.VarChar(300)
+  fileUrl       String   @map("file_url")
+  fileSizeBytes Int?     @map("file_size_bytes")
+  mimeType      String?  @map("mime_type") @db.VarChar(100)
+  uploadedBy    String?  @map("uploaded_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_documents")
+}
+
+// =============================================================================
+// AUDIT / ACTIVITY LOG
+// =============================================================================
+
+model ActivityLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  entityType    String   @map("entity_type") @db.VarChar(100) // Booking, Invoice, Lead, etc.
+  entityId      String   @map("entity_id") @db.Uuid
+  action        String   @db.VarChar(100) // CREATED, STATUS_CHANGED, AMOUNT_EDITED, etc.
+  previousState Json?    @map("previous_state")
+  newState      Json?    @map("new_state")
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+// =============================================================================
+// SUPPORTING MODELS
+// =============================================================================
+
+model GstCodeMaster {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codeType    String  @map("code_type") @db.VarChar(3) // SAC or HSN
+  code        String  @unique @db.VarChar(8)
+  description String
+  gstRate     Decimal @map("gst_rate") @db.Decimal(5, 2)
+  cgstRate    Decimal @map("cgst_rate") @db.Decimal(5, 2)
+  sgstRate    Decimal @map("sgst_rate") @db.Decimal(5, 2)
+  igstRate    Decimal @map("igst_rate") @db.Decimal(5, 2)
+  isActive    Boolean @default(true) @map("is_active")
+
+  @@index([codeType])
+  @@map("gst_code_master")
+}
+
+model TermsTemplate {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(200)
+  content        String
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("terms_templates")
+}
+
+model NotificationLog {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  channel       String    @db.VarChar(20) // EMAIL, SMS, WHATSAPP
+  recipient     String    @db.VarChar(255)
+  subject       String?   @db.VarChar(500)
+  body          String?
+  entityType    String?   @map("entity_type") @db.VarChar(100)
+  entityId      String?   @map("entity_id") @db.Uuid
+  status        String    @default("PENDING") @db.VarChar(20) // PENDING, SENT, FAILED
+  providerRef   String?   @map("provider_ref") @db.VarChar(200)
+  sentAt        DateTime? @map("sent_at")
+  failureReason String?   @map("failure_reason")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("notification_logs")
+}
