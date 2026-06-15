@@ -3,11 +3,11 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard, CalendarDays, ClipboardList, ArrowLeftRight, Filter,
-  Receipt, TrendingDown, Users, BadgePercent, Globe, Settings, Zap,
+  Receipt, TrendingDown, TrendingUp, Users, BadgePercent, Globe, Settings, Zap,
   FileText, BarChart2, Shield, Percent, Link2, SlidersHorizontal,
   Sun, Moon, Eye, EyeOff, ArrowRight, Loader2, X,
   Wrench, Bolt, Home, Monitor, Droplets, Leaf, Plus, Pencil,
-  Building2, ChevronRight, Lock,
+  Building2, ChevronRight, Lock, IndianRupee, CalendarCheck, AlertCircle, Activity,
 } from "lucide-react";
 
 // ─── localStorage hook ──────────────────────────────────────────
@@ -608,16 +608,54 @@ function BookingModal({date,onClose}:{date:number;onClose:()=>void}){
 // ═══════════════════════════════════════════════════════════════
 
 const KPI_META = [
-  {icon:"💰",accent:"#f59e0b",glow:"rgba(245,158,11,0.12)"},
-  {icon:"📅",accent:"#10b981",glow:"rgba(16,185,129,0.12)"},
-  {icon:"📊",accent:"#3b82f6",glow:"rgba(59,130,246,0.12)"},
-  {icon:"⚠️",accent:"#ef4444",glow:"rgba(239,68,68,0.12)"},
+  {Icon:IndianRupee,  accent:"#f59e0b", glow:"rgba(245,158,11,0.10)"},
+  {Icon:CalendarCheck,accent:"#10b981", glow:"rgba(16,185,129,0.10)"},
+  {Icon:Activity,     accent:"#6366f1", glow:"rgba(99,102,241,0.10)"},
+  {Icon:AlertCircle,  accent:"#ef4444", glow:"rgba(239,68,68,0.10)"},
 ];
+
+function RingChart({pct,booked,free,total}:{pct:number;booked:number;free:number;total:number}){
+  const r=54, cx=70, cy=70, stroke=10;
+  const circ=2*Math.PI*r;
+  const bookedArc=(booked/total)*circ;
+  const freeArc=(free/total)*circ;
+  const bookedColor="url(#ringAmber)";
+  const freeColor="url(#ringGreen)";
+  return(
+    <div className="flex flex-col items-center">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <defs>
+          <linearGradient id="ringAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f59e0b"/>
+            <stop offset="100%" stopColor="#f97316"/>
+          </linearGradient>
+          <linearGradient id="ringGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#10b981"/>
+            <stop offset="100%" stopColor="#34d399"/>
+          </linearGradient>
+        </defs>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--s2)" strokeWidth={stroke}/>
+        {booked>0&&<circle cx={cx} cy={cy} r={r} fill="none" stroke={bookedColor} strokeWidth={stroke}
+          strokeDasharray={`${bookedArc} ${circ-bookedArc}`} strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`}/>}
+        {free>0&&<circle cx={cx} cy={cy} r={r} fill="none" stroke={freeColor} strokeWidth={stroke}
+          strokeDasharray={`${freeArc} ${circ-freeArc}`} strokeLinecap="round"
+          transform={`rotate(${-90+(booked/total)*360} ${cx} ${cy})`} style={{opacity:0.6}}/>}
+        <text x={cx} y={cy-6} textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--text)">{pct}%</text>
+        <text x={cx} y={cy+12} textAnchor="middle" fontSize="9" fill="var(--muted)">occupancy</text>
+      </svg>
+      <div className="flex items-center gap-4 mt-1">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{background:"linear-gradient(135deg,#f59e0b,#f97316)"}}/><span className="text-xs" style={{color:"var(--muted)"}}>{booked} booked</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{background:"linear-gradient(135deg,#10b981,#34d399)",opacity:0.7}}/><span className="text-xs" style={{color:"var(--muted)"}}>{free} free</span></div>
+      </div>
+    </div>
+  );
+}
 
 function Dashboard(){
   const nowD = new Date();
   const dashYear = nowD.getFullYear();
-  const dashMonth = nowD.getMonth(); // 0-indexed
+  const dashMonth = nowD.getMonth();
 
   const {data:kpiData=[]} = useQuery({queryKey:["kpi"],queryFn:()=>fetch("/api/kpi").then(r=>r.json())});
   const {data:expData={categories:EXP_CATS,monthly:EXP_MONTHLY}} = useQuery({queryKey:["expenses"],queryFn:()=>fetch("/api/expenses").then(r=>r.json())});
@@ -638,9 +676,19 @@ function Dashboard(){
   const upcoming = (bookings as any[]).filter((b:any)=>["CONFIRMED","TENTATIVE"].includes(b.status)).slice(0,5);
   const hotLeads = (leads as any[]).filter((l:any)=>["NEW","CONTACTED","SITE_VISIT"].includes(l.status)).slice(0,5);
   const mName = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][dashMonth];
+  const totalRevL = REV.reduce((a,b)=>a+b,0);
+
+  const LEAD_STAGES=[
+    {label:"New",       color:"#6366f1", count:(leads as any[]).filter((l:any)=>l.status==="NEW").length},
+    {label:"Contacted", color:"#3b82f6", count:(leads as any[]).filter((l:any)=>l.status==="CONTACTED").length},
+    {label:"Site Visit",color:"#f59e0b", count:(leads as any[]).filter((l:any)=>l.status==="SITE_VISIT").length},
+    {label:"Converted", color:"#10b981", count:(leads as any[]).filter((l:any)=>l.status==="CONVERTED").length},
+  ];
+  const maxLeadCount = Math.max(...LEAD_STAGES.map(s=>s.count), 1);
 
   return(
     <div className="space-y-4 animate-fade-up">
+
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
@@ -652,129 +700,96 @@ function Dashboard(){
         </div>
       </div>
 
-      {/* ── KPI Grid ── */}
+      {/* ── KPI Cards — Creatio-style vivid gradient tiles ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {kpi.map((k:any,i:number)=>{
           const m=KPI_META[i]||KPI_META[0];
+          const Icon=m.Icon;
+          const gradients=[
+            "linear-gradient(135deg,#f59e0b 0%,#f97316 100%)",
+            "linear-gradient(135deg,#10b981 0%,#059669 100%)",
+            "linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)",
+            "linear-gradient(135deg,#ef4444 0%,#dc2626 100%)",
+          ];
+          const bg=gradients[i]||gradients[0];
           return(
-            <div key={k.label} className="kpi-card v-card p-4" style={{borderColor:"var(--border)"}}>
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-[10px] font-medium uppercase tracking-widest" style={{color:"var(--subtle)"}}>{k.label}</span>
-                <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{background:m.glow}}>{m.icon}</div>
+            <div key={k.label} className="rounded-2xl p-4 relative overflow-hidden" style={{background:bg}}>
+              <div className="absolute inset-0 opacity-10" style={{background:"radial-gradient(circle at 80% 20%, white, transparent 60%)"}}/>
+              <div className="relative">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-white/70">{k.label}</span>
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center bg-white/20">
+                    <Icon size={13} strokeWidth={2} color="white"/>
+                  </div>
+                </div>
+                <p className="text-2xl sm:text-3xl font-black tracking-tight leading-none mb-2 text-white">{k.value}</p>
+                <div className="flex items-center gap-1">
+                  {k.up
+                    ?<TrendingUp size={11} color="rgba(255,255,255,0.8)" strokeWidth={2.5}/>
+                    :<TrendingDown size={11} color="rgba(255,255,255,0.6)" strokeWidth={2.5}/>}
+                  <span className="text-[10px] font-medium text-white/80">{k.delta}</span>
+                </div>
               </div>
-              <p className="text-xl sm:text-2xl font-black tracking-tight mb-2 leading-none" style={{color:"var(--text)"}}>{k.value}</p>
-              <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:k.up?"#10b981":"#ef4444"}}/>
-                <span className="text-[10px] truncate" style={{color:k.up?"#10b981":"#ef4444"}}>{k.delta}</span>
-              </div>
-              <div className="absolute bottom-0 left-0 w-14 h-px rounded-full" style={{background:`linear-gradient(90deg,${m.accent},transparent)`}}/>
             </div>
           );
         })}
       </div>
 
-      {/* ── Month Availability ── */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold" style={{color:"var(--text)"}}>{mName} Availability</p>
-          <span className="text-xs font-bold" style={{color:occupancyPct>70?"#ef4444":occupancyPct>40?"#f59e0b":"#10b981"}}>{occupancyPct}% occupancy</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="rounded-xl p-3 text-center" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)"}}>
-            <p className="text-2xl font-black" style={{color:"#ef4444"}}>{bookedCount}</p>
-            <p className="text-[10px] mt-0.5" style={{color:"var(--muted)"}}>Days Booked</p>
-          </div>
-          <div className="rounded-xl p-3 text-center" style={{background:"rgba(16,185,129,0.08)",border:"1px solid rgba(16,185,129,0.2)"}}>
-            <p className="text-2xl font-black" style={{color:"#10b981"}}>{freeCount}</p>
-            <p className="text-[10px] mt-0.5" style={{color:"var(--muted)"}}>Days Free</p>
-          </div>
-          <div className="rounded-xl p-3 text-center" style={{background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)"}}>
-            <p className="text-2xl font-black" style={{color:"#f59e0b"}}>{daysInMonth}</p>
-            <p className="text-[10px] mt-0.5" style={{color:"var(--muted)"}}>Total Days</p>
-          </div>
-        </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{background:"var(--s2)"}}>
-          <div className="h-full rounded-full transition-all" style={{width:`${occupancyPct}%`,background:occupancyPct>70?"#ef4444":occupancyPct>40?"#f59e0b":"#10b981"}}/>
-        </div>
-      </Card>
-
-      {/* ── Upcoming Bookings + Hot Leads ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Upcoming Bookings</p>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{background:"rgba(245,158,11,0.1)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.2)"}}>{upcoming.length}</span>
-          </div>
-          {upcoming.length===0
-            ?<p className="text-sm py-4 text-center" style={{color:"var(--subtle)"}}>No upcoming bookings</p>
-            :<div className="space-y-2">
-               {upcoming.map((b:any,i:number)=>(
-                 <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl" style={{background:"var(--s2)"}}>
-                   <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-black text-xs text-black" style={{background:"linear-gradient(135deg,#f59e0b,#f97316)"}}>{b.day||"—"}</div>
-                   <div className="flex-1 min-w-0">
-                     <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{b.client}</p>
-                     <p className="text-[10px] truncate" style={{color:"var(--subtle)"}}>{b.event} · {b.space}</p>
-                   </div>
-                   <div className="text-right flex-shrink-0">
-                     <p className="text-xs font-bold" style={{color:"#f59e0b"}}>{b.amount}</p>
-                     <Badge status={b.status}/>
-                   </div>
-                 </div>
-               ))}
-             </div>
-          }
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Leads to Follow Up</p>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{background:"rgba(59,130,246,0.1)",color:"#3b82f6",border:"1px solid rgba(59,130,246,0.2)"}}>{hotLeads.length}</span>
-          </div>
-          {hotLeads.length===0
-            ?<p className="text-sm py-4 text-center" style={{color:"var(--subtle)"}}>No active leads</p>
-            :<div className="space-y-2">
-               {hotLeads.map((l:any,i:number)=>(
-                 <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl" style={{background:"var(--s2)"}}>
-                   <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-black text-xs text-black" style={{background:"linear-gradient(135deg,#3b82f6,#8b5cf6)"}}>{(l.name||"?").charAt(0)}</div>
-                   <div className="flex-1 min-w-0">
-                     <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{l.name}</p>
-                     <p className="text-[10px] truncate" style={{color:"var(--subtle)"}}>{l.event} · {l.date}</p>
-                   </div>
-                   <div className="text-right flex-shrink-0">
-                     <p className="text-xs font-bold" style={{color:"#f59e0b"}}>{l.budget}</p>
-                     <Badge status={l.status}/>
-                   </div>
-                 </div>
-               ))}
-             </div>
-          }
-        </Card>
-      </div>
-
-      {/* ── Revenue + Expenses ── */}
+      {/* ── Middle Row: Occupancy | Revenue Chart | Lead Pipeline ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="v-card p-4 md:col-span-2">
+
+        {/* Occupancy Donut */}
+        <div className="v-card rounded-2xl p-5" style={{borderColor:"var(--border)"}}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm font-semibold" style={{color:"var(--text)"}}>{mName} Occupancy</p>
+              <p className="text-xs mt-0.5" style={{color:"var(--subtle)"}}>{daysInMonth} days this month</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <RingChart pct={occupancyPct} booked={bookedCount} free={freeCount} total={daysInMonth}/>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="rounded-xl p-2.5 text-center" style={{background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.18)"}}>
+              <p className="text-lg font-black" style={{color:"#f59e0b"}}>{bookedCount}</p>
+              <p className="text-[10px]" style={{color:"var(--muted)"}}>Booked</p>
+            </div>
+            <div className="rounded-xl p-2.5 text-center" style={{background:"rgba(16,185,129,0.08)",border:"1px solid rgba(16,185,129,0.18)"}}>
+              <p className="text-lg font-black" style={{color:"#10b981"}}>{freeCount}</p>
+              <p className="text-[10px]" style={{color:"var(--muted)"}}>Available</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Revenue Gradient Bar Chart */}
+        <div className="v-card rounded-2xl p-5" style={{borderColor:"var(--border)"}}>
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Revenue Trend</p>
               <p className="text-xs mt-0.5" style={{color:"var(--subtle)"}}>FY 2024–25 · ₹ Lakhs</p>
             </div>
-            <p className="text-base font-black" style={{color:"#f59e0b"}}>₹{REV.reduce((a,b)=>a+b,0)}L</p>
+            <div className="text-right">
+              <p className="text-base font-black" style={{color:"#f59e0b"}}>₹{totalRevL}L</p>
+              <p className="text-[10px]" style={{color:"var(--subtle)"}}>total</p>
+            </div>
           </div>
-          <div className="relative">
+          <div className="relative h-28">
             {[0.25,0.5,0.75,1].map(p=>(
-              <div key={p} className="absolute left-0 right-0" style={{bottom:`${p*96}px`,borderTop:"1px dashed var(--border)",opacity:0.5}}/>
+              <div key={p} className="absolute left-0 right-0 border-t" style={{bottom:`${p*100}%`,borderColor:"var(--border)",opacity:0.5}}/>
             ))}
-            <div className="flex items-end gap-1 h-24 relative">
+            <div className="flex items-end gap-1 h-full relative">
               {REV.map((v,i)=>{
-                const isMax=v===maxRev;
+                const isLast=i===REV.length-1;
+                const pct=(v/maxRev)*100;
                 return(
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-                    <div className="relative w-full" style={{height:`${(v/maxRev)*88}px`}}>
-                      {isMax&&<div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-bold" style={{color:"#f59e0b"}}>peak</div>}
-                      <div className="w-full h-full rounded-t-sm" style={{background:isMax?"linear-gradient(180deg,#f97316,#f59e0b)":"linear-gradient(180deg,rgba(245,158,11,0.7),rgba(245,158,11,0.4))"}} title={`₹${v}L`}/>
-                    </div>
-                    <span className="text-[8px]" style={{color:i===5?"#f59e0b":"var(--subtle)"}}>{MON[i]}</span>
+                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5 h-full justify-end">
+                    <div className="w-full rounded-t-md transition-all" style={{
+                      height:`${pct}%`,
+                      background:isLast
+                        ?"linear-gradient(180deg,#f97316 0%,#f59e0b 100%)"
+                        :`linear-gradient(180deg,rgba(245,158,11,0.75) 0%,rgba(245,158,11,0.25) 100%)`
+                    }}/>
+                    <span className="text-[8px] font-medium" style={{color:isLast?"#f59e0b":"var(--subtle)"}}>{MON[i]}</span>
                   </div>
                 );
               })}
@@ -782,24 +797,99 @@ function Dashboard(){
           </div>
         </div>
 
-        <div className="v-card p-4">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Monthly Costs</p>
-            <p className="text-sm font-black" style={{color:"#f59e0b"}}>{fmt(totalExp)}</p>
+        {/* Lead Pipeline */}
+        <div className="v-card rounded-2xl p-5" style={{borderColor:"var(--border)"}}>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Lead Pipeline</p>
+              <p className="text-xs mt-0.5" style={{color:"var(--subtle)"}}>{(leads as any[]).length} total leads</p>
+            </div>
           </div>
-          <div className="space-y-2.5">
-            {cats.slice(0,5).map((c:any)=>(
-              <div key={c.name}>
-                <div className="flex items-center justify-between mb-0.5">
-                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:c.color}}/><span className="text-xs" style={{color:"var(--muted)"}}>{c.name.split(" ")[0]}</span></div>
-                  <span className="text-[10px] font-semibold" style={{color:"var(--text)"}}>₹{(c.amount/1000).toFixed(0)}K</span>
+          <div className="space-y-3">
+            {LEAD_STAGES.map(s=>{
+              const w=maxLeadCount>0?Math.max((s.count/maxLeadCount)*100,s.count>0?8:0):0;
+              return(
+                <div key={s.label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium" style={{color:"var(--muted)"}}>{s.label}</span>
+                    <span className="text-xs font-bold" style={{color:"var(--text)"}}>{s.count}</span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{background:"var(--s2)"}}>
+                    <div className="h-full rounded-full transition-all" style={{
+                      width:`${w}%`,
+                      background:`linear-gradient(90deg,${s.color},${s.color}99)`
+                    }}/>
+                  </div>
                 </div>
-                <div className="h-1 rounded-full overflow-hidden" style={{background:"var(--s2)"}}>
-                  <div className="h-full rounded-full" style={{width:`${(c.amount/totalExp)*100}%`,background:c.color}}/>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          <div className="mt-4 pt-3" style={{borderTop:"1px solid var(--border)"}}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{color:"var(--subtle)"}}>Monthly Costs</span>
+              <span className="text-sm font-black" style={{color:"#ef4444"}}>{fmt(totalExp)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Row: Upcoming Bookings | Leads to Follow Up ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+        {/* Upcoming Bookings */}
+        <div className="v-card rounded-2xl overflow-hidden" style={{borderColor:"var(--border)"}}>
+          <div className="flex items-center justify-between px-5 py-3.5" style={{borderBottom:"1px solid var(--border)"}}>
+            <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Upcoming Bookings</p>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:"rgba(245,158,11,0.1)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.2)"}}>{upcoming.length}</span>
+          </div>
+          {upcoming.length===0
+            ?<p className="text-sm py-8 text-center" style={{color:"var(--subtle)"}}>No upcoming bookings</p>
+            :<div>
+               {upcoming.map((b:any,i:number)=>(
+                 <div key={i} className="flex items-center gap-3 px-5 py-3 transition-colors" style={{borderBottom:i<upcoming.length-1?"1px solid var(--border)":"none"}}>
+                   <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-xs text-white" style={{background:"linear-gradient(135deg,#f59e0b,#f97316)"}}>
+                     {b.day||String(i+1)}
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{b.client}</p>
+                     <p className="text-[10px] truncate mt-0.5" style={{color:"var(--subtle)"}}>{b.event} · {b.space}</p>
+                   </div>
+                   <div className="text-right flex-shrink-0">
+                     <p className="text-xs font-bold mb-0.5" style={{color:"#f59e0b"}}>{b.amount}</p>
+                     <Badge status={b.status}/>
+                   </div>
+                 </div>
+               ))}
+             </div>
+          }
+        </div>
+
+        {/* Leads to Follow Up */}
+        <div className="v-card rounded-2xl overflow-hidden" style={{borderColor:"var(--border)"}}>
+          <div className="flex items-center justify-between px-5 py-3.5" style={{borderBottom:"1px solid var(--border)"}}>
+            <p className="text-sm font-semibold" style={{color:"var(--text)"}}>Leads to Follow Up</p>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:"rgba(99,102,241,0.1)",color:"#6366f1",border:"1px solid rgba(99,102,241,0.2)"}}>{hotLeads.length}</span>
+          </div>
+          {hotLeads.length===0
+            ?<p className="text-sm py-8 text-center" style={{color:"var(--subtle)"}}>No active leads</p>
+            :<div>
+               {hotLeads.map((l:any,i:number)=>(
+                 <div key={i} className="flex items-center gap-3 px-5 py-3" style={{borderBottom:i<hotLeads.length-1?"1px solid var(--border)":"none"}}>
+                   <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xs text-white" style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)"}}>
+                     {(l.name||"?").charAt(0).toUpperCase()}
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{l.name}</p>
+                     <p className="text-[10px] truncate mt-0.5" style={{color:"var(--subtle)"}}>{l.event} · {l.date}</p>
+                   </div>
+                   <div className="text-right flex-shrink-0">
+                     <p className="text-xs font-bold mb-0.5" style={{color:"#6366f1"}}>{l.budget}</p>
+                     <Badge status={l.status}/>
+                   </div>
+                 </div>
+               ))}
+             </div>
+          }
         </div>
       </div>
     </div>
@@ -958,9 +1048,21 @@ function BookingsView(){
     if(res.ok){await qc.invalidateQueries({queryKey:["bookings"]});}
   };
   if(isLoading)return <div className="text-center py-10" style={{color:"var(--muted)"}}>Loading bookings...</div>;
+  const BOOKING_STAGES=[
+    {stage:"Enquiry",   color:"#64748b", count:(list as any[]).filter((b:any)=>b.status==="ENQUIRY").length},
+    {stage:"Tentative", color:"#a855f7", count:(list as any[]).filter((b:any)=>b.status==="TENTATIVE").length},
+    {stage:"Confirmed", color:"#10b981", count:(list as any[]).filter((b:any)=>b.status==="CONFIRMED").length},
+    {stage:"Completed", color:"#3b82f6", count:(list as any[]).filter((b:any)=>b.status==="COMPLETED").length},
+    {stage:"Cancelled", color:"#ef4444", count:(list as any[]).filter((b:any)=>["CANCELLED","NO_SHOW"].includes(b.status)).length},
+  ];
   return(
     <Section title="Bookings" sub={`${list.length} events`} btn="+ New Booking" onBtn={()=>setModal(true)}>
       {modal&&<NewBookingModal onClose={()=>setModal(false)} onSave={b=>{handleSave(b);setModal(false);}}/>}
+      {/* Creatio-style booking lifecycle bar */}
+      <div className="v-card rounded-xl p-3" style={{borderColor:"var(--border)"}}>
+        <p className="text-xs font-semibold mb-2" style={{color:"var(--muted)"}}>Booking lifecycle</p>
+        <PipelineChevron stages={BOOKING_STAGES}/>
+      </div>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {list.map((b,i)=>(
@@ -1286,27 +1388,92 @@ function AddLeadModal({onClose,onSave}:{onClose:()=>void;onSave:(l:typeof LEADS[
   );
 }
 
+function PipelineChevron({stages,activeStage}:{stages:typeof PIPELINE;activeStage?:string}){
+  return(
+    <div className="flex items-stretch overflow-x-auto gap-0 pb-1">
+      {stages.map((s,i)=>{
+        const isActive=!activeStage||s.stage===activeStage;
+        const isPast=activeStage&&stages.findIndex(x=>x.stage===activeStage)>i;
+        const bg=isPast?"var(--s2)":isActive&&activeStage?s.color:"var(--s1)";
+        const textColor=isPast?"var(--muted)":isActive&&activeStage?"white":"var(--text)";
+        const badgeBg=isPast?"var(--s2)":isActive&&activeStage?"rgba(255,255,255,0.25)":s.color+"22";
+        const badgeText=isPast?"var(--muted)":isActive&&activeStage?"white":s.color;
+        return(
+          <div key={s.stage} className="relative flex items-center flex-shrink-0" style={{marginRight:i<stages.length-1?"-1px":"0"}}>
+            <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all"
+              style={{
+                background:!activeStage?`linear-gradient(135deg,${s.color}22,${s.color}11)`:"var(--s1)",
+                borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",
+                borderLeft:i===0?"1px solid var(--border)":"none",
+                borderRight:i===stages.length-1?"1px solid var(--border)":"none",
+                borderRadius:i===0?"10px 0 0 10px":i===stages.length-1?"0 10px 10px 0":"0",
+                color:!activeStage?s.color:"var(--muted)",
+                clipPath:i>0&&i<stages.length-1?"polygon(8px 0%,100% 0%,calc(100% + 8px) 50%,100% 100%,8px 100%,16px 50%)":
+                         i===0?"polygon(0% 0%,100% 0%,calc(100% + 8px) 50%,100% 100%,0% 100%)":
+                         "polygon(8px 0%,100% 0%,100% 100%,8px 100%,16px 50%)",
+              }}>
+              <span className="font-semibold">{s.stage}</span>
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{background:!activeStage?s.color+"33":"var(--s2)",color:!activeStage?s.color:"var(--text)"}}>{s.count}</span>
+            </div>
+            {i<stages.length-1&&(
+              <div className="absolute right-0 top-0 bottom-0 w-2 z-10" style={{
+                background:"var(--bg)",
+                clipPath:"polygon(0 0,0 100%,100% 50%)"
+              }}/>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function LeadsView(){
   const qc=useQueryClient();
   const {data:leads=[]}=useQuery({queryKey:["leads"],queryFn:()=>fetch("/api/leads").then(r=>r.json())});
   const [modal,setModal]=useState(false);
+  const [activeFilter,setActiveFilter]=useState<string|null>(null);
   const handleSave=async(l:any)=>{
     await fetch("/api/leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(l)});
     await qc.invalidateQueries({queryKey:["leads"]});
   };
+
+  const livePipeline=PIPELINE.map(p=>({
+    ...p,
+    count:(leads as any[]).filter((l:any)=>l.status?.replace(/_/g," ")===p.stage.toUpperCase()||l.status===p.stage.toUpperCase().replace(/ /g,"_")||l.status===p.stage).length||p.count
+  }));
+  const filtered=activeFilter?(leads as any[]).filter((l:any)=>l.status?.replace(/_/g," ").toLowerCase()===activeFilter.toLowerCase()):leads as any[];
+
   return(
     <Section title="Leads & CRM" sub={`Active pipeline · ${leads.length} leads`} btn="+ Add Lead" onBtn={()=>setModal(true)}>
       {modal&&<AddLeadModal onClose={()=>setModal(false)} onSave={l=>{handleSave(l);setModal(false);}}/>}
-      <div className="flex gap-2 flex-wrap">
-        {PIPELINE.map(p=>(
-          <div key={p.stage} className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{background:"var(--s1)",border:"1px solid var(--border)"}}>
-            <div className="w-2 h-2 rounded-full" style={{background:p.color}}/><span className="text-xs" style={{color:"var(--text)"}}>{p.stage}</span><span className="text-xs font-semibold" style={{color:p.color}}>{p.count}</span>
-          </div>
-        ))}
+
+      {/* Creatio-style chevron pipeline bar */}
+      <div className="v-card rounded-xl p-3" style={{borderColor:"var(--border)"}}>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold" style={{color:"var(--muted)"}}>Pipeline stages</p>
+          {activeFilter&&<button className="text-xs px-2 py-0.5 rounded-full" style={{background:"var(--s2)",color:"var(--text)"}} onClick={()=>setActiveFilter(null)}>Clear filter</button>}
+        </div>
+        <PipelineChevron stages={livePipeline}/>
+        <div className="flex gap-2 flex-wrap mt-2">
+          {livePipeline.map(p=>(
+            <button key={p.stage} onClick={()=>setActiveFilter(activeFilter===p.stage?null:p.stage)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-all"
+              style={{
+                background:activeFilter===p.stage?p.color+"22":"var(--s2)",
+                border:`1px solid ${activeFilter===p.stage?p.color:"var(--border)"}`,
+                color:activeFilter===p.stage?p.color:"var(--muted)",
+                fontWeight:activeFilter===p.stage?600:400,
+              }}>
+              <div className="w-1.5 h-1.5 rounded-full" style={{background:p.color}}/>
+              {p.stage} <span className="font-bold">{p.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
-        {leads.map((l,i)=>(
+        {filtered.map((l:any,i:number)=>(
           <Card key={i} className="p-4">
             <div className="flex items-start justify-between mb-2">
               <p className="font-semibold text-sm" style={{color:"var(--text)"}}>{l.name}</p>
@@ -1319,13 +1486,13 @@ function LeadsView(){
             </div>
           </Card>
         ))}
-        {!leads.length&&<p className="text-center py-6 text-sm" style={{color:"var(--muted)"}}>No leads yet</p>}
+        {!filtered.length&&<p className="text-center py-6 text-sm" style={{color:"var(--muted)"}}>No leads{activeFilter?` in "${activeFilter}"`:""}</p>}
       </div>
       {/* Desktop table */}
       <Card className="overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
         <table className="w-full"><THead cols={["Lead","Event","Date","Budget","Status","BDE"]}/>
-          <tbody>{leads.map((l,i)=>(
+          <tbody>{filtered.map((l:any,i:number)=>(
             <Row key={i}><Td style={{color:"var(--text)",fontWeight:500} as React.CSSProperties}>{l.name}</Td><Td style={{color:"var(--muted)"} as React.CSSProperties}>{l.event}</Td><Td style={{color:"var(--muted)"} as React.CSSProperties}>{l.date}</Td><Td style={{color:"#f59e0b",fontWeight:500} as React.CSSProperties}>{l.budget}</Td><Td><Badge status={l.status}/></Td><Td style={{color:"var(--muted)"} as React.CSSProperties}>{l.bde}</Td></Row>
           ))}</tbody>
         </table>

@@ -102,12 +102,20 @@ body {
 [data-theme="light"] .badge-enquiry   { color:#7c3aed; }
 [data-theme="light"] .badge-completed { color:#475569; }
 
+/* ─── Light mode card elevation (Creatio-style) ─────────────── */
+[data-theme="light"] .v-card {
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+}
+[data-theme="light"] .v-card:hover {
+  box-shadow: 0 4px 12px rgba(15,23,42,0.08), 0 1px 3px rgba(15,23,42,0.05);
+}
+
 /* ─── Theme-aware UI primitives ─────────────────────────────── */
 .v-card {
   border-radius: 0.75rem;
   background: var(--s1);
   border: 1px solid var(--border);
-  transition: border-color 0.15s, background 0.2s;
+  transition: border-color 0.15s, background 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .v-input {
   width: 100%;
