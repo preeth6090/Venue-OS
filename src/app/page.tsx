@@ -1388,40 +1388,27 @@ function AddLeadModal({onClose,onSave}:{onClose:()=>void;onSave:(l:typeof LEADS[
   );
 }
 
-function PipelineChevron({stages,activeStage}:{stages:typeof PIPELINE;activeStage?:string}){
+function PipelineChevron({stages,activeStage,onSelect}:{stages:typeof PIPELINE;activeStage?:string;onSelect?:(s:string|null)=>void}){
   return(
-    <div className="flex items-stretch overflow-x-auto gap-0 pb-1">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {stages.map((s,i)=>{
-        const isActive=!activeStage||s.stage===activeStage;
-        const isPast=activeStage&&stages.findIndex(x=>x.stage===activeStage)>i;
-        const bg=isPast?"var(--s2)":isActive&&activeStage?s.color:"var(--s1)";
-        const textColor=isPast?"var(--muted)":isActive&&activeStage?"white":"var(--text)";
-        const badgeBg=isPast?"var(--s2)":isActive&&activeStage?"rgba(255,255,255,0.25)":s.color+"22";
-        const badgeText=isPast?"var(--muted)":isActive&&activeStage?"white":s.color;
+        const isSelected=activeStage===s.stage;
         return(
-          <div key={s.stage} className="relative flex items-center flex-shrink-0" style={{marginRight:i<stages.length-1?"-1px":"0"}}>
-            <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all"
-              style={{
-                background:!activeStage?`linear-gradient(135deg,${s.color}22,${s.color}11)`:"var(--s1)",
-                borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",
-                borderLeft:i===0?"1px solid var(--border)":"none",
-                borderRight:i===stages.length-1?"1px solid var(--border)":"none",
-                borderRadius:i===0?"10px 0 0 10px":i===stages.length-1?"0 10px 10px 0":"0",
-                color:!activeStage?s.color:"var(--muted)",
-                clipPath:i>0&&i<stages.length-1?"polygon(8px 0%,100% 0%,calc(100% + 8px) 50%,100% 100%,8px 100%,16px 50%)":
-                         i===0?"polygon(0% 0%,100% 0%,calc(100% + 8px) 50%,100% 100%,0% 100%)":
-                         "polygon(8px 0%,100% 0%,100% 100%,8px 100%,16px 50%)",
-              }}>
-              <span className="font-semibold">{s.stage}</span>
-              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{background:!activeStage?s.color+"33":"var(--s2)",color:!activeStage?s.color:"var(--text)"}}>{s.count}</span>
-            </div>
-            {i<stages.length-1&&(
-              <div className="absolute right-0 top-0 bottom-0 w-2 z-10" style={{
-                background:"var(--bg)",
-                clipPath:"polygon(0 0,0 100%,100% 50%)"
-              }}/>
-            )}
-          </div>
+          <button key={s.stage} onClick={()=>onSelect&&onSelect(isSelected?null:s.stage)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{
+              background:isSelected?s.color:s.color+"18",
+              color:isSelected?"#fff":s.color,
+              border:`1.5px solid ${isSelected?s.color:s.color+"44"}`,
+              fontWeight:isSelected?700:500,
+            }}>
+            <span>{s.stage}</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              style={{background:isSelected?"rgba(255,255,255,0.25)":s.color+"33",color:isSelected?"#fff":s.color}}>
+              {s.count}
+            </span>
+            {i<stages.length-1&&<span className="ml-0.5 opacity-30" style={{color:s.color}}>›</span>}
+          </button>
         );
       })}
     </div>
@@ -1448,28 +1435,13 @@ function LeadsView(){
     <Section title="Leads & CRM" sub={`Active pipeline · ${leads.length} leads`} btn="+ Add Lead" onBtn={()=>setModal(true)}>
       {modal&&<AddLeadModal onClose={()=>setModal(false)} onSave={l=>{handleSave(l);setModal(false);}}/>}
 
-      {/* Creatio-style chevron pipeline bar */}
-      <div className="v-card rounded-xl p-3" style={{borderColor:"var(--border)"}}>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-semibold" style={{color:"var(--muted)"}}>Pipeline stages</p>
-          {activeFilter&&<button className="text-xs px-2 py-0.5 rounded-full" style={{background:"var(--s2)",color:"var(--text)"}} onClick={()=>setActiveFilter(null)}>Clear filter</button>}
+      {/* Pipeline stage filter bar */}
+      <div className="v-card rounded-xl p-4" style={{borderColor:"var(--border)"}}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold" style={{color:"var(--muted)"}}>Pipeline stages — click to filter</p>
+          {activeFilter&&<button className="text-xs px-2 py-0.5 rounded-full" style={{background:"var(--s2)",color:"var(--text)"}} onClick={()=>setActiveFilter(null)}>Clear</button>}
         </div>
-        <PipelineChevron stages={livePipeline}/>
-        <div className="flex gap-2 flex-wrap mt-2">
-          {livePipeline.map(p=>(
-            <button key={p.stage} onClick={()=>setActiveFilter(activeFilter===p.stage?null:p.stage)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-all"
-              style={{
-                background:activeFilter===p.stage?p.color+"22":"var(--s2)",
-                border:`1px solid ${activeFilter===p.stage?p.color:"var(--border)"}`,
-                color:activeFilter===p.stage?p.color:"var(--muted)",
-                fontWeight:activeFilter===p.stage?600:400,
-              }}>
-              <div className="w-1.5 h-1.5 rounded-full" style={{background:p.color}}/>
-              {p.stage} <span className="font-bold">{p.count}</span>
-            </button>
-          ))}
-        </div>
+        <PipelineChevron stages={livePipeline} activeStage={activeFilter??undefined} onSelect={setActiveFilter}/>
       </div>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
