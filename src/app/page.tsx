@@ -146,53 +146,33 @@ const AIRBNB_BOOKINGS = [
 ];
 
 const EXP_CATS = [
-  {name:"Electricity & Utilities",color:"#f59e0b",amount:45000 },
-  {name:"Property Rent",          color:"#3b82f6",amount:120000},
-  {name:"Security Staff",         color:"#ef4444",amount:38000 },
-  {name:"Housekeeping & Cleaning",color:"#10b981",amount:25000 },
-  {name:"Catering Setup",         color:"#a855f7",amount:15000 },
-  {name:"AV & Technology",        color:"#06b6d4",amount:12000 },
-  {name:"Maintenance & Repairs",  color:"#f97316",amount:8000  },
-  {name:"Miscellaneous",          color:"#64748b",amount:10000 },
+  {name:"Electricity & Utilities",color:"#f59e0b",amount:0},
+  {name:"Property Rent",          color:"#3b82f6",amount:0},
+  {name:"Security Staff",         color:"#ef4444",amount:0},
+  {name:"Housekeeping & Cleaning",color:"#10b981",amount:0},
+  {name:"Catering Setup",         color:"#a855f7",amount:0},
+  {name:"AV & Technology",        color:"#06b6d4",amount:0},
+  {name:"Maintenance & Repairs",  color:"#f97316",amount:0},
+  {name:"Miscellaneous",          color:"#64748b",amount:0},
 ];
-const EXP_MONTHLY = [
-  {month:"Jan",electricity:42000,rent:120000,security:36000,housekeeping:23000,catering:12000,av:9000, maintenance:6000, misc:8000 },
-  {month:"Feb",electricity:38000,rent:120000,security:36000,housekeeping:22000,catering:14000,av:11000,maintenance:7000, misc:9000 },
-  {month:"Mar",electricity:41000,rent:120000,security:37000,housekeeping:24000,catering:18000,av:15000,maintenance:12000,misc:11000},
-  {month:"Apr",electricity:44000,rent:120000,security:38000,housekeeping:25000,catering:15000,av:12000,maintenance:8000, misc:10000},
-  {month:"May",electricity:47000,rent:120000,security:38000,housekeeping:26000,catering:16000,av:13000,maintenance:9000, misc:12000},
-  {month:"Jun",electricity:45000,rent:120000,security:38000,housekeeping:25000,catering:15000,av:12000,maintenance:8000, misc:10000},
-];
+const EXP_MONTHLY: {month:string;electricity:number;rent:number;security:number;housekeeping:number;catering:number;av:number;maintenance:number;misc:number}[] = [];
 const EXP_KEYS = ["electricity","rent","security","housekeeping","catering","av","maintenance","misc"] as const;
 
-const INVOICE_LIST = [
-  {num:"VOS/2425/0041",client:"Mehta Enterprises",  taxable:245000,cgst:22050,sgst:22050,total:289100,due:"05 Jun 2025",status:"SENT",   bookingRef:"BK-2425-0101",items:[{desc:"Grand Ballroom — Corporate Event (8 hrs)",sac:"997212",qty:1,rate:200000},{desc:"AV Setup & Support",sac:"998399",qty:1,rate:45000}]},
-  {num:"VOS/2425/0040",client:"TechSpark Solutions", taxable:120000,cgst:10800,sgst:10800,total:141600,due:"31 May 2025",status:"OVERDUE",bookingRef:"BK-2425-0103",items:[{desc:"Convention Hall — Product Launch (6 hrs)",sac:"997212",qty:1,rate:120000}]},
-  {num:"VOS/2425/0039",client:"Infosys Leadership",  taxable:420000,cgst:37800,sgst:37800,total:495600,due:"28 May 2025",status:"PAID",   bookingRef:"BK-2425-0106",items:[{desc:"Grand Ballroom — Leadership Summit (Full Day)",sac:"997212",qty:1,rate:350000},{desc:"Catering Coordination",sac:"996334",qty:1,rate:70000}]},
-];
+const INVOICE_LIST: any[] = [];
 
-const BDE_INIT = [
-  {name:"Sneha Reddy",role:"Senior BDE",        bookings:14,revenue:920000, commission:18400,target:1200000,rate:2.0},
-  {name:"Karan Mehta",role:"Business Dev. Exec.",bookings:12,revenue:780000, commission:15600,target:1200000,rate:2.0},
-  {name:"Divya Nair", role:"Business Dev. Exec.",bookings:8, revenue:450000, commission:9000, target:1000000,rate:2.0},
-];
+const BDE_INIT: any[] = [];
 
 const KPI = [
-  {label:"Revenue (MTD)",     value:"₹18,42,500",delta:"+12.4% vs last month",up:true },
-  {label:"Confirmed Bookings",value:"34",         delta:"8 this week",          up:true },
-  {label:"Avg. Event Value",  value:"₹54,191",   delta:"+3.1% vs last month",  up:true },
-  {label:"Outstanding Dues",  value:"₹3,15,000", delta:"6 invoices overdue",   up:false},
+  {label:"Revenue (MTD)",     value:"₹0",delta:"No bookings yet",   up:true },
+  {label:"Confirmed Bookings",value:"0",  delta:"Add your first booking",up:true },
+  {label:"Avg. Event Value",  value:"₹0", delta:"No data yet",        up:true },
+  {label:"Outstanding Dues",  value:"₹0", delta:"No invoices yet",    up:false},
 ];
-const REV=[42,68,55,72,88,95,76,110,98,125,142,138];
+const REV=[0,0,0,0,0,0,0,0,0,0,0,0];
 const MON=["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
-const CLIENTS=["Mehta Enterprises","Arjun & Priya Wedding","TechSpark Solutions","Karnataka Govt.","Sharma Family","Infosys Leadership","Namma Fintech","Wipro Ltd","Flipkart Events","New Client"];
-const PIPELINE=[{stage:"New",count:12,color:"#64748b"},{stage:"Contacted",count:9,color:"#a855f7"},{stage:"Site Visit",count:6,color:"#3b82f6"},{stage:"Quote Sent",count:8,color:"#f59e0b"},{stage:"Negotiation",count:5,color:"#f97316"},{stage:"Converted",count:34,color:"#10b981"}];
-const LEADS=[
-  {name:"Ramesh Iyer",       event:"Birthday Party",      date:"Aug 2025",budget:"₹80K–₹1.2L",status:"QUOTE_SENT",    bde:"Sneha R."},
-  {name:"Wipro Annual Day",  event:"Corporate Conference",date:"Sep 2025",budget:"₹5L–₹8L",   status:"NEGOTIATION",   bde:"Karan M."},
-  {name:"Priya Nair Wedding",event:"Wedding",             date:"Nov 2025",budget:"₹12L–₹18L", status:"SITE_VISIT_DONE",bde:"Sneha R."},
-  {name:"Flipkart Townhall", event:"Townhall",            date:"Jul 2025",budget:"₹2L–₹3L",   status:"CONTACTED",     bde:"Karan M."},
-];
+const CLIENTS: string[] = [];
+const PIPELINE=[{stage:"New",count:0,color:"#64748b"},{stage:"Contacted",count:0,color:"#a855f7"},{stage:"Site Visit",count:0,color:"#3b82f6"},{stage:"Quote Sent",count:0,color:"#f59e0b"},{stage:"Negotiation",count:0,color:"#f97316"},{stage:"Converted",count:0,color:"#10b981"}];
+const LEADS: any[] = [];
 const DEFAULT_PREFIX = {prefix:"VOS",separator:"/",yearCode:"2425",suffix:""};
 
 // ═══════════════════════════════════════════════════════════════
@@ -2160,6 +2140,15 @@ function BdeView(){
       <div className="rounded-lg p-3 text-sm" style={{border:"1px solid rgba(245,158,11,0.3)",background:"rgba(245,158,11,0.07)",color:"#d97706"}}>
         <strong>Active Plan:</strong> Q1 FY2025 · Net Margin · 2% up to ₹5L · 3.5% up to ₹10L · 5% above ₹10L
       </div>
+      {!displayBde.length&&(
+        <div className="v-card rounded-2xl p-10 text-center">
+          <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{background:"rgba(245,158,11,0.1)"}}>
+            <BadgePercent size={24} color="#f59e0b"/>
+          </div>
+          <p className="text-sm font-semibold mb-1" style={{color:"var(--text)"}}>No BDE staff yet</p>
+          <p className="text-xs" style={{color:"var(--muted)"}}>Users with BDE or Sales Manager role will appear here once added. Go to Venue Settings → Users to add team members.</p>
+        </div>
+      )}
       <div className="space-y-4">
         {displayBde.map((b,i)=>{
           const pct=Math.min(100,Math.round((b.revenue/b.target)*100));
@@ -2646,163 +2635,189 @@ function LoginPage({theme,toggleTheme,onLoginSuccess}:{theme:string;toggleTheme:
   const [password,setPassword]=useState("");
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
+  const [loadingRole,setLoadingRole]=useState<string|null>(null);
   const [showPw,setShowPw]=useState(false);
+  const [showDemo,setShowDemo]=useState(false);
 
-  const tryLogin=async()=>{
-    if(!email||!password)return;
+  const tryLogin=async(e=email,p=password)=>{
+    if(!e||!p)return;
     setErr(""); setLoading(true);
     try{
-      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.trim().toLowerCase(),password})});
-      if(res.ok){ onLoginSuccess(); }
-      else{ setErr("Invalid email or password."); }
-    }catch(e){ setErr("Network error. Please try again."); }
+      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e.trim().toLowerCase(),password:p})});
+      if(res.ok){onLoginSuccess();}
+      else{setErr("Invalid email or password.");}
+    }catch{setErr("Network error. Please try again.");}
     setLoading(false);
   };
 
-  const quickLogin=(u:typeof DEMO_USERS[0])=>{setEmail(u.email);setPassword(u.password);setErr("");};
+  const quickLogin=async(u:typeof DEMO_USERS[0])=>{
+    setLoadingRole(u.role); setErr("");
+    try{
+      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:u.email,password:u.password})});
+      if(res.ok){onLoginSuccess();}
+      else{setErr("Demo login failed.");}
+    }catch{setErr("Network error.");}
+    setLoadingRole(null);
+  };
+
+  const ROLE_COLORS:{[k:string]:string}={
+    SUPER_ADMIN:"#f59e0b",SALES_MANAGER:"#10b981",BDE:"#6366f1",OPERATIONS:"#f97316",FINANCE:"#3b82f6"
+  };
 
   return(
     <div data-theme={theme} className="min-h-screen flex" style={{background:"var(--bg)"}}>
 
-      {/* ── Left panel: branding ── */}
-      <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden" style={{background:"#09090e"}}>
-        {/* Subtle dot grid */}
-        <div className="absolute inset-0" style={{backgroundImage:"radial-gradient(circle,rgba(255,255,255,0.06) 1px,transparent 1px)",backgroundSize:"28px 28px"}}/>
-        {/* Amber glow top-left */}
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full pointer-events-none" style={{background:"radial-gradient(circle,rgba(245,158,11,0.08),transparent 65%)"}}/>
-        {/* Orange glow bottom-right */}
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full pointer-events-none" style={{background:"radial-gradient(circle,rgba(249,115,22,0.06),transparent 65%)"}}/>
+      {/* ── Left panel ── */}
+      <div className="hidden lg:flex flex-col w-[55%] relative overflow-hidden" style={{background:"#07070d"}}>
+        <div className="absolute inset-0" style={{backgroundImage:"radial-gradient(circle,rgba(255,255,255,0.05) 1px,transparent 1px)",backgroundSize:"32px 32px"}}/>
+        <div className="absolute -top-60 -left-60 w-[700px] h-[700px] rounded-full pointer-events-none" style={{background:"radial-gradient(circle,rgba(245,158,11,0.07),transparent 60%)"}}/>
+        <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full pointer-events-none" style={{background:"radial-gradient(circle,rgba(99,102,241,0.06),transparent 60%)"}}/>
 
-        <div className="relative z-10 flex flex-col h-full px-14 py-12">
-          {/* Wordmark */}
-          <div className="flex items-center gap-3 mb-14">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-black" style={{background:"#f59e0b"}}>V</div>
-            <span className="font-black text-[17px] tracking-tight" style={{color:"#f8fafc"}}>VenueOS</span>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{background:"rgba(245,158,11,0.12)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.2)"}}>Enterprise</span>
+        <div className="relative z-10 flex flex-col h-full px-16 py-14">
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-16">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-base text-black" style={{background:"linear-gradient(135deg,#f59e0b,#f97316)"}}>V</div>
+            <span className="font-black text-[18px] tracking-tight text-white">VenueOS</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{background:"rgba(245,158,11,0.15)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.25)"}}>ENTERPRISE</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-[2.4rem] font-black leading-[1.12] tracking-tight mb-5" style={{color:"#f8fafc"}}>
-            The operating system<br/>for venue professionals.
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-4" style={{color:"#f59e0b"}}>All-in-one venue management</p>
+          <h1 className="text-[2.6rem] font-black leading-[1.08] tracking-tight mb-6 text-white">
+            Run your venue.<br/>
+            <span style={{background:"linear-gradient(90deg,#f59e0b,#f97316)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+              Not spreadsheets.
+            </span>
           </h1>
-          <p className="text-[15px] leading-relaxed mb-12" style={{color:"#64748b"}}>
-            Multi-property operations, GST-compliant billing, staff compliance, and automated client workflows — unified in one platform.
+          <p className="text-[14px] leading-relaxed mb-12" style={{color:"#64748b",maxWidth:"380px"}}>
+            GST-compliant billing, lead pipeline, staff compliance, AI tasks, and iCal sync — built for Indian venue businesses.
           </p>
 
-          {/* Feature list — two columns */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5 flex-1 content-start">
-            {FEATURES.map(f=>(
-              <div key={f.title} className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.15)"}}>
-                  <f.Icon size={12} strokeWidth={2} color="#f59e0b"/>
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold leading-tight" style={{color:"#e2e8f0"}}>{f.title}</p>
-                  <p className="text-[11px] mt-0.5 leading-snug" style={{color:"#475569"}}>{f.desc}</p>
-                </div>
+          {/* Mini dashboard preview */}
+          <div className="rounded-2xl p-5 mb-8" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-semibold text-white/60">Live Dashboard Preview</p>
+              <div className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full" style={{background:"rgba(16,185,129,0.12)",color:"#10b981",border:"1px solid rgba(16,185,129,0.2)"}}>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"/>Live
               </div>
-            ))}
+            </div>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[{l:"Revenue",v:"₹18.4L",c:"#f59e0b"},{l:"Bookings",v:"34",c:"#10b981"},{l:"Avg Value",v:"₹54K",c:"#6366f1"},{l:"Overdue",v:"₹3.1L",c:"#ef4444"}].map(k=>(
+                <div key={k.l} className="rounded-xl p-2.5" style={{background:`${k.c}18`,border:`1px solid ${k.c}33`}}>
+                  <p className="text-sm font-black" style={{color:k.c}}>{k.v}</p>
+                  <p className="text-[9px] mt-0.5" style={{color:"rgba(255,255,255,0.4)"}}>{k.l}</p>
+                </div>
+              ))}
+            </div>
+            {/* Mini bar chart */}
+            <div className="flex items-end gap-1 h-10">
+              {[40,65,52,78,90,72,85,95,68,110,130,125].map((v,i)=>(
+                <div key={i} className="flex-1 rounded-t-sm" style={{
+                  height:`${(v/130)*100}%`,
+                  background:i===11?"linear-gradient(180deg,#f97316,#f59e0b)":"rgba(245,158,11,0.25)"
+                }}/>
+              ))}
+            </div>
+            <p className="text-[9px] mt-2" style={{color:"rgba(255,255,255,0.25)"}}>Revenue trend · FY 2024–25</p>
           </div>
 
-          {/* Stats strip */}
-          <div className="flex gap-8 mt-12 pt-8" style={{borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-            {[["10+","Modules"],["GST","Compliant"],["iCal","Integrated"],["RBAC","Access Control"]].map(([v,l])=>(
+          {/* Stats */}
+          <div className="flex gap-8 pt-6" style={{borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+            {[["11+","Modules"],["GST","Compliant"],["AI","Powered"],["iCal","Sync"]].map(([v,l])=>(
               <div key={l}>
-                <p className="text-base font-black" style={{color:"#f59e0b"}}>{v}</p>
-                <p className="text-[10px] mt-0.5 font-medium" style={{color:"#475569"}}>{l}</p>
+                <p className="text-sm font-black" style={{color:"#f59e0b"}}>{v}</p>
+                <p className="text-[10px] mt-0.5" style={{color:"#475569"}}>{l}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Right panel: login form ── */}
+      {/* ── Right panel: login ── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 relative" style={{background:"var(--bg)"}}>
-        {/* Theme toggle */}
-        <button onClick={toggleTheme} className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+        <button onClick={toggleTheme} className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
           style={{background:"var(--s1)",border:"1px solid var(--border)",color:"var(--muted)"}}>
-          {theme==="dark"
-            ?<><Sun size={12} strokeWidth={2}/> Light</>
-            :<><Moon size={12} strokeWidth={2}/> Dark</>
-          }
+          {theme==="dark"?<><Sun size={12}/> Light</>:<><Moon size={12}/> Dark</>}
         </button>
 
         <div className="w-full max-w-[360px]">
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-black" style={{background:"#f59e0b"}}>V</div>
+          <div className="flex items-center gap-2.5 mb-10 lg:hidden">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm text-black" style={{background:"linear-gradient(135deg,#f59e0b,#f97316)"}}>V</div>
             <span className="font-black text-lg" style={{color:"var(--text)"}}>VenueOS</span>
           </div>
 
-          <h1 className="text-[1.7rem] font-black tracking-tight mb-1" style={{color:"var(--text)"}}>Welcome back</h1>
-          <p className="text-sm mb-8" style={{color:"var(--muted)"}}>Sign in to Grand Palace Venues</p>
+          <h2 className="text-2xl font-black tracking-tight mb-1" style={{color:"var(--text)"}}>Sign in</h2>
+          <p className="text-sm mb-8" style={{color:"var(--muted)"}}>Welcome back — enter your credentials below</p>
 
-          {/* Form */}
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{color:"var(--muted)"}}>Email address</label>
-              <input value={email} onChange={e=>setEmail(e.target.value)} type="email"
-                placeholder="you@grandpalace.in" className="v-input"
-                onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
+              <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider" style={{color:"var(--muted)"}}>Email</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="you@venue.in" className="v-input" onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{color:"var(--muted)"}}>Password</label>
+              <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider" style={{color:"var(--muted)"}}>Password</label>
               <div className="relative">
-                <input value={password} onChange={e=>setPassword(e.target.value)}
-                  type={showPw?"text":"password"} placeholder="Enter password"
-                  className="v-input pr-14" onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
-                <button onClick={()=>setShowPw(p=>!p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-medium transition-colors"
-                  style={{color:"var(--subtle)"}}>
+                <input value={password} onChange={e=>setPassword(e.target.value)} type={showPw?"text":"password"} placeholder="••••••••" className="v-input pr-14" onKeyDown={e=>e.key==="Enter"&&tryLogin()}/>
+                <button onClick={()=>setShowPw(p=>!p)} className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px]" style={{color:"var(--subtle)"}}>
                   {showPw?<><EyeOff size={13}/> Hide</>:<><Eye size={13}/> Show</>}
                 </button>
               </div>
             </div>
           </div>
 
-          {err&&<p className="mt-3 text-xs text-red-400">{err}</p>}
+          {err&&<p className="mt-3 text-xs" style={{color:"#ef4444"}}>{err}</p>}
 
-          <button onClick={tryLogin} disabled={!email||!password||loading}
-            className="w-full mt-5 py-3 font-bold rounded-xl text-black text-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-            style={{background:"#f59e0b"}}>
-            {loading
-              ?<><Loader2 size={14} className="animate-spin"/>Signing in...</>
-              :<>Sign in <ArrowRight size={14}/></>
-            }
+          <button onClick={()=>tryLogin()} disabled={!email||!password||loading}
+            className="w-full mt-5 py-3 font-bold rounded-xl text-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+            style={{background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000"}}>
+            {loading?<><Loader2 size={14} className="animate-spin"/>Signing in...</>:<>Sign in <ArrowRight size={14}/></>}
           </button>
 
-          {/* Demo accounts */}
+          {/* Demo access */}
           <div className="mt-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex-1 h-px" style={{background:"var(--border)"}}/>
-              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{color:"var(--subtle)"}}>Demo accounts</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{color:"var(--subtle)"}}>Try the demo</span>
               <div className="flex-1 h-px" style={{background:"var(--border)"}}/>
             </div>
-            <div className="space-y-1.5">
-              {DEMO_USERS.map(u=>(
-                <button key={u.email} onClick={()=>quickLogin(u)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
-                  style={{background:"var(--s1)",border:"1px solid var(--border)"}}>
-                  <div className="w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-black text-black flex-shrink-0"
-                    style={{background:"#f59e0b"}}>
-                    {u.name.split(" ").map((x:string)=>x[0]).join("")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{color:"var(--text)"}}>{u.name}</p>
-                    <p className="text-[10px] truncate" style={{color:"var(--subtle)"}}>{u.email}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{background:"rgba(245,158,11,0.12)",color:"#f59e0b"}}>
-                      {u.role.replace(/_/g," ")}
-                    </span>
-                    <ChevronRight size={12} color="#475569"/>
-                  </div>
-                </button>
-              ))}
-            </div>
+
+            <button onClick={()=>setShowDemo(d=>!d)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all mb-3"
+              style={{background:"var(--s2)",border:"1px solid var(--border)",color:"var(--text)"}}>
+              <Sparkles size={13} color="#6366f1"/>
+              Explore with a demo account
+              {showDemo?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
+            </button>
+
+            {showDemo&&(
+              <div className="space-y-1.5 animate-slide-in">
+                {DEMO_USERS.map(u=>{
+                  const color=ROLE_COLORS[u.role]||"#f59e0b";
+                  const isLoading=loadingRole===u.role;
+                  return(
+                    <button key={u.email} onClick={()=>quickLogin(u)} disabled={!!loadingRole}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all disabled:opacity-60"
+                      style={{background:"var(--s1)",border:`1px solid var(--border)`}}>
+                      <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-[11px] text-black"
+                        style={{background:color}}>
+                        {isLoading?<Loader2 size={13} className="animate-spin text-black"/>:u.name.split(" ").map((x:string)=>x[0]).join("")}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold" style={{color:"var(--text)"}}>{u.name}</p>
+                        <p className="text-[10px] truncate" style={{color:"var(--subtle)"}}>{u.desc}</p>
+                      </div>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full font-bold flex-shrink-0" style={{background:color+"22",color,border:`1px solid ${color}44`}}>
+                        {u.role.replace(/_/g," ")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <p className="text-center text-[11px] mt-6" style={{color:"var(--subtle)"}}>VenueOS v3.0 · Grand Palace Venues Pvt. Ltd.</p>
+          <p className="text-center text-[10px] mt-6" style={{color:"var(--subtle)"}}>VenueOS · Built for Indian venue businesses</p>
         </div>
       </div>
     </div>
